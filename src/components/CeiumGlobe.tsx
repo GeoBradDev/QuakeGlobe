@@ -1,7 +1,7 @@
 import {Viewer, Entity} from "resium"
 import {Cartesian3, Color, createWorldTerrainAsync, TerrainProvider, Ion} from "cesium"
 import {useEffect, useState} from "react"
-import MagnitudeFilter from "./MagnitudeFilter"
+import FilterPanel from "./FilterPanel.tsx"
 import MagnitudeLegend from "./MagnitudeLegend.tsx";
 
 Ion.defaultAccessToken = import.meta.env.VITE_CESIUM_ION_TOKEN
@@ -51,6 +51,8 @@ export default function CesiumGlobe() {
     const [quakes, setQuakes] = useState<Earthquake[]>([])
     const [terrainProvider, setTerrainProvider] = useState<TerrainProvider | undefined>()
     const [magRange, setMagRange] = useState<[number, number]>([0, 10])
+    const [depthRange, setDepthRange] = useState<[number, number]>([0, 700])
+
 
     useEffect(() => {
         createWorldTerrainAsync().then(setTerrainProvider)
@@ -74,11 +76,20 @@ export default function CesiumGlobe() {
 
     return (
       <>
-          <MagnitudeFilter minMag={0} maxMag={10} onChange={setMagRange}/>
+          <FilterPanel
+            minMag={0}
+            maxMag={10}
+            magRange={magRange}
+            onMagChange={setMagRange}
+            depthRange={depthRange}
+            onDepthChange={setDepthRange}
+          />
+
           <MagnitudeLegend/>
           <Viewer full terrainProvider={terrainProvider}>
               {quakes
-                .filter((q) => q.magnitude >= magRange[0] && q.magnitude <= magRange[1])
+                .filter((q) => q.magnitude >= magRange[0] && q.magnitude <= magRange[1] &&
+                  q.coordinates[2] <= depthRange[1] && q.coordinates[2] <= depthRange[1])
                 .map((q) => (
                   <Entity
                     key={q.id}
