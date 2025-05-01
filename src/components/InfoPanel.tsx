@@ -22,7 +22,7 @@ export default function InfoPanel() {
     }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <strong style={{ fontSize: "15px" }}>Welcome to QuakeGlobe</strong>
-        <button onClick={() => setVisible(false)} style={{
+        <button onClick={() => setVisible(false)} aria-label="Close info panel" style={{
           background: "none",
           border: "none",
           color: "#ccc",
