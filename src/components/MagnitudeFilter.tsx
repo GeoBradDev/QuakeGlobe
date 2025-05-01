@@ -31,7 +31,7 @@ const MagnitudeFilter = ({ minMag, maxMag, onChange }: MagnitudeFilterProps) => 
       borderRadius: "16px",
       boxShadow: "0 8px 20px rgba(0,0,0,0.4)",
       zIndex: 1000,
-      width: expanded ? "260px" : "60px",
+      width: expanded ? "200px" : "60px",
       fontFamily: "system-ui, sans-serif",
       border: "1px solid #444",
       color: "#f2f2f2",
@@ -80,7 +80,7 @@ const MagnitudeFilter = ({ minMag, maxMag, onChange }: MagnitudeFilterProps) => 
                 max={range[1]}
                 onChange={e => updateRange([parseFloat(e.target.value), range[1]])}
                 style={{
-                  width: "100%",
+                  width: "80%",
                   padding: "8px",
                   marginTop: "4px",
                   borderRadius: "6px",
@@ -101,7 +101,7 @@ const MagnitudeFilter = ({ minMag, maxMag, onChange }: MagnitudeFilterProps) => 
                 max={maxMag}
                 onChange={e => updateRange([range[0], parseFloat(e.target.value)])}
                 style={{
-                  width: "100%",
+                  width: "80%",
                   padding: "8px",
                   marginTop: "4px",
                   borderRadius: "6px",
