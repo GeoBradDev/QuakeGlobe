@@ -141,7 +141,7 @@ export default function CesiumGlobe() {
             clockViewModel={clockViewModelRef.current}
             timeline
             animation
-            onReady={(viewer) => {
+            onReady={(viewer: CesiumViewer) => {
                 const clock = clockRef.current
                 if (clock && viewer.timeline) {
                     viewer.timeline.zoomTo(clock.startTime, clock.stopTime)
