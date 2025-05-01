@@ -13,7 +13,7 @@ import {
 import {useEffect, useRef, useState} from "react"
 import FilterPanel from "./FilterPanel.tsx"
 import MagnitudeLegend from "./MagnitudeLegend.tsx"
-import {Viewer as CesiumViewer} from "cesium"
+import { Viewer as CesiumViewer, CesiumComponentRef } from "resium"
 import InfoPanel from "./InfoPanel.tsx"
 
 Ion.defaultAccessToken = import.meta.env.VITE_CESIUM_ION_TOKEN
@@ -65,7 +65,7 @@ export default function CesiumGlobe() {
     const [depthRange, setDepthRange] = useState<[number, number]>([0, 700])
     const [currentTime, setCurrentTime] = useState<JulianDate>()
 
-    const viewerRef = useRef<CesiumViewer | null>(null)
+   const viewerRef = useRef<CesiumComponentRef<CesiumViewer>>(null)
     const clockRef = useRef<Clock>()
     const clockViewModelRef = useRef<ClockViewModel>()
 
