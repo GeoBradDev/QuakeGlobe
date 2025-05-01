@@ -8,14 +8,13 @@ import {
     Clock,
     JulianDate,
     ClockRange,
-    ClockViewModel
+    ClockViewModel,
 } from "cesium"
 import {useEffect, useRef, useState} from "react"
 import FilterPanel from "./FilterPanel.tsx"
-import MagnitudeLegend from "./MagnitudeLegend.tsx";
+import MagnitudeLegend from "./MagnitudeLegend.tsx"
 import {Viewer as CesiumViewer} from "cesium"
-import InfoPanel from "./InfoPanel.tsx";
-
+import InfoPanel from "./InfoPanel.tsx"
 
 Ion.defaultAccessToken = import.meta.env.VITE_CESIUM_ION_TOKEN
 
@@ -56,19 +55,19 @@ interface USGSFeature {
     }
 }
 
-
 const USGS_URL =
   "https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/all_month.geojson"
 
 export default function CesiumGlobe() {
     const [quakes, setQuakes] = useState<Earthquake[]>([])
-    const [terrainProvider, setTerrainProvider] = useState<TerrainProvider | undefined>()
+    const [terrainProvider, setTerrainProvider] = useState<TerrainProvider>()
     const [magRange, setMagRange] = useState<[number, number]>([0, 10])
     const [depthRange, setDepthRange] = useState<[number, number]>([0, 700])
-    const [clock, setClock] = useState<Clock>()
-    const [currentTime, setCurrentTime] = useState<JulianDate | undefined>()
+    const [currentTime, setCurrentTime] = useState<JulianDate>()
 
     const viewerRef = useRef<CesiumViewer | null>(null)
+    const clockRef = useRef<Clock>()
+    const clockViewModelRef = useRef<ClockViewModel>()
 
     useEffect(() => {
         createWorldTerrainAsync().then(setTerrainProvider)
@@ -85,44 +84,43 @@ export default function CesiumGlobe() {
                   place: f.properties.place,
                   time: f.properties.time,
               }))
-
               setQuakes(features)
           })
     }, [])
 
     useEffect(() => {
-        if (quakes.length > 0) {
-            const sorted = [...quakes].sort((a, b) => a.time - b.time)
-            const start = JulianDate.fromDate(new Date(sorted[0].time))
-            const stop = JulianDate.fromDate(new Date(sorted[sorted.length - 1].time))
-            console.log("Clock start:", start.toString())
-            console.log("Clock stop:", stop.toString())
+        if (quakes.length === 0 || clockRef.current) return
 
+        const sorted = [...quakes].sort((a, b) => a.time - b.time)
+        const start = JulianDate.fromDate(new Date(sorted[0].time))
+        const stop = JulianDate.fromDate(new Date(sorted[sorted.length - 1].time))
 
-            if (JulianDate.lessThan(start, stop)) {
-                const newClock = new Clock({
-                    startTime: start,
-                    currentTime: JulianDate.clone(start),
-                    stopTime: stop,
-                    clockRange: ClockRange.LOOP_STOP,
-                    multiplier: 10000,
-                    shouldAnimate: false,
-                })
+        if (JulianDate.lessThan(start, stop)) {
+            const clock = new Clock({
+                startTime: start,
+                currentTime: JulianDate.clone(start),
+                stopTime: stop,
+                clockRange: ClockRange.LOOP_STOP,
+                multiplier: 10000,
+                shouldAnimate: true,
+            })
 
-                const handleClockTick = (c: Clock) => {
-                    setCurrentTime(JulianDate.clone(c.currentTime))
+            clock.onTick.addEventListener((c) => {
+                setCurrentTime(JulianDate.clone(c.currentTime))
+
+                if (JulianDate.greaterThanOrEquals(c.currentTime, c.stopTime)) {
+                    c.shouldAnimate = false
                 }
+            })
 
-                newClock.onTick.addEventListener(handleClockTick)
 
-                setClock(newClock)
-
-            } else {
-                console.warn("Invalid time range: start and stop are equal")
-            }
+            clockRef.current = clock
+            clockViewModelRef.current = new ClockViewModel(clock)
+        } else {
+            console.warn("Invalid time range: start and stop are equal")
         }
     }, [quakes])
-    
+
     return (
       <>
           <FilterPanel
@@ -135,28 +133,34 @@ export default function CesiumGlobe() {
           />
 
           <MagnitudeLegend/>
-          <InfoPanel />
-          <Viewer full terrainProvider={terrainProvider} clockViewModel={clock ? new ClockViewModel(clock) : undefined}
-                  timeline={true} animation={true} ref={viewerRef} onReady={(viewer) => {
-              if (clock) {
-                  viewer.timeline.zoomTo(clock.startTime, clock.stopTime)
-              }
-          }}>
-              {quakes.filter((q) => {
-                  if (!currentTime) return true
+          <InfoPanel/>
+          <Viewer
+            ref={viewerRef}
+            full
+            terrainProvider={terrainProvider}
+            clockViewModel={clockViewModelRef.current}
+            timeline
+            animation
+            onReady={(viewer) => {
+                const clock = clockRef.current
+                if (clock && viewer.timeline) {
+                    viewer.timeline.zoomTo(clock.startTime, clock.stopTime)
+                }
+            }}
+          >
+              {quakes
+                .filter((q) => {
+                    if (!currentTime) return true
 
-                  const quakeTime = JulianDate.fromDate(new Date(q.time))
-
-                  return (
-                    q.magnitude >= magRange[0] &&
-                    q.magnitude <= magRange[1] &&
-                    q.coordinates[2] >= depthRange[0] &&
-                    q.coordinates[2] <= depthRange[1] &&
-                    JulianDate.lessThanOrEquals(quakeTime, currentTime)
-                  )
-              })
-
-
+                    const quakeTime = JulianDate.fromDate(new Date(q.time))
+                    return (
+                      q.magnitude >= magRange[0] &&
+                      q.magnitude <= magRange[1] &&
+                      q.coordinates[2] >= depthRange[0] &&
+                      q.coordinates[2] <= depthRange[1] &&
+                      JulianDate.lessThanOrEquals(quakeTime, currentTime)
+                    )
+                })
                 .map((q) => (
                   <Entity
                     key={q.id}
@@ -173,4 +177,3 @@ export default function CesiumGlobe() {
       </>
     )
 }
-
