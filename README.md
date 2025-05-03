@@ -1,54 +1,44 @@
-# React + TypeScript + Vite
+# 🌍 QuakeGlobe
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+**QuakeGlobe** is a real-time 3D earthquake visualization tool built with [CesiumJS](https://cesium.com/cesiumjs/), [React](https://react.dev/), and the [USGS Earthquake API](https://earthquake.usgs.gov/earthquakes/feed/v1.0/geojson.php). It lets users explore seismic activity across the globe, filter events by magnitude and depth, and animate earthquakes over time using Cesium’s timeline and clock.
 
-Currently, two official plugins are available:
+## 🔗 Live Demo
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+👉 [quakeglobe.onrender.com](https://quakeglobe.onrender.com)
 
-## Expanding the ESLint configuration
+---
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+## ✨ Features
 
-```js
-export default tseslint.config({
-  extends: [
-    // Remove ...tseslint.configs.recommended and replace with this
-    ...tseslint.configs.recommendedTypeChecked,
-    // Alternatively, use this for stricter rules
-    ...tseslint.configs.strictTypeChecked,
-    // Optionally, add this for stylistic rules
-    ...tseslint.configs.stylisticTypeChecked,
-  ],
-  languageOptions: {
-    // other options...
-    parserOptions: {
-      project: ['./tsconfig.node.json', './tsconfig.app.json'],
-      tsconfigRootDir: import.meta.dirname,
-    },
-  },
-})
-```
+- **🌐 Interactive 3D Globe** — powered by CesiumJS + Resium
+- **📊 Real-Time Data** — from USGS GeoJSON `all_month` feed
+- **🎛️ Filter Panel** — dynamically refine earthquakes by magnitude and depth
+- **⏱️ Time Animation** — Cesium’s clock and timeline animate quakes as they occurred
+- **📌 Metadata Popups** — see magnitude, depth, location, and timestamp
+- **💡 Info Panel** — helpful overview for first-time users
+- **🖤 Dark Mode UI** — visually clean, modern, and mobile-friendly
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+---
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+## 🛠️ Tech Stack
 
-export default tseslint.config({
-  plugins: {
-    // Add the react-x and react-dom plugins
-    'react-x': reactX,
-    'react-dom': reactDom,
-  },
-  rules: {
-    // other rules...
-    // Enable its recommended typescript rules
-    ...reactX.configs['recommended-typescript'].rules,
-    ...reactDom.configs.recommended.rules,
-  },
-})
-```
+- **CesiumJS + Resium**: 3D geospatial rendering
+- **React + TypeScript**: Component-driven frontend
+- **USGS API**: Live earthquake data
+- **Render.com**: Hosting + deployment
+
+---
+
+## 📦 Setup & Development
+
+```bash
+# Clone and install dependencies
+git clone https://github.com/GeoBradDev/quakeglobe.git
+cd quakeglobe
+npm install
+
+# Add your Cesium Ion token
+echo "VITE_CESIUM_ION_TOKEN=your_token_here" > .env
+
+# Start development server
+npm run dev
