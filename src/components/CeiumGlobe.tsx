@@ -1,4 +1,5 @@
-import {Viewer, Entity} from "resium"
+import {Viewer as CesiumViewer} from "cesium"
+import {Viewer, Entity, CesiumComponentRef} from "resium"
 import {
     Cartesian3,
     Color,
@@ -13,7 +14,6 @@ import {
 import {useEffect, useRef, useState} from "react"
 import FilterPanel from "./FilterPanel.tsx"
 import MagnitudeLegend from "./MagnitudeLegend.tsx"
-import { Viewer as CesiumViewer, CesiumComponentRef } from "resium"
 import InfoPanel from "./InfoPanel.tsx"
 
 Ion.defaultAccessToken = import.meta.env.VITE_CESIUM_ION_TOKEN
@@ -65,7 +65,7 @@ export default function CesiumGlobe() {
     const [depthRange, setDepthRange] = useState<[number, number]>([0, 700])
     const [currentTime, setCurrentTime] = useState<JulianDate>()
 
-   const viewerRef = useRef<CesiumComponentRef<CesiumViewer>>(null)
+    const viewerRef = useRef<CesiumComponentRef<CesiumViewer>>(null)
     const clockRef = useRef<Clock>()
     const clockViewModelRef = useRef<ClockViewModel>()
 
@@ -121,6 +121,16 @@ export default function CesiumGlobe() {
         }
     }, [quakes])
 
+    useEffect(() => {
+        const viewer = viewerRef.current?.cesiumElement
+        const clock = clockRef.current
+
+        if (viewer && clock) {
+            viewer.timeline?.zoomTo(clock.startTime, clock.stopTime)
+        }
+    }, [quakes])
+
+
     return (
       <>
           <FilterPanel
@@ -141,12 +151,6 @@ export default function CesiumGlobe() {
             clockViewModel={clockViewModelRef.current}
             timeline
             animation
-            onReady={(viewer: CesiumViewer) => {
-                const clock = clockRef.current
-                if (clock && viewer.timeline) {
-                    viewer.timeline.zoomTo(clock.startTime, clock.stopTime)
-                }
-            }}
           >
               {quakes
                 .filter((q) => {
