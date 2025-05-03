@@ -66,8 +66,9 @@ export default function CesiumGlobe() {
     const [currentTime, setCurrentTime] = useState<JulianDate>()
 
     const viewerRef = useRef<CesiumComponentRef<CesiumViewer>>(null)
-    const clockRef = useRef<Clock>()
-    const clockViewModelRef = useRef<ClockViewModel>()
+    const clockRef = useRef<Clock | undefined>(undefined)
+    const clockViewModelRef = useRef<ClockViewModel | undefined>(undefined)
+
 
     useEffect(() => {
         createWorldTerrainAsync().then(setTerrainProvider)
@@ -92,8 +93,9 @@ export default function CesiumGlobe() {
         if (quakes.length === 0 || clockRef.current) return
 
         const sorted = [...quakes].sort((a, b) => a.time - b.time)
-        const start = JulianDate.fromDate(new Date(sorted[0].time))
-        const stop = JulianDate.fromDate(new Date(sorted[sorted.length - 1].time))
+        const start = JulianDate.fromDate(new Date(sorted[0].time), new JulianDate())
+        const stop = JulianDate.fromDate(new Date(sorted[sorted.length - 1].time), new JulianDate())
+
 
         if (JulianDate.lessThan(start, stop)) {
             const clock = new Clock({
