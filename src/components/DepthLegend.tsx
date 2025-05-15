@@ -1,21 +1,21 @@
 import {useState} from "react"
-import {useIsMobile} from "../../utils/useIsMobile.ts";
+import {useIsMobile} from "../../utils/useIsMobile.ts"
 
-const MagnitudeLegend = () => {
+const DepthLegend = () => {
     const isMobile = useIsMobile()
     const [open, setOpen] = useState(!isMobile)
 
     const styles = {
         wrapper: {
             position: "absolute" as const,
-            bottom: "50px",
+            top: "75px",
             right: "20px",
             backgroundColor: "rgba(28, 28, 30, 0.95)",
             border: "1px solid #444",
             borderRadius: "12px",
             padding: "12px",
             color: "#f2f2f2",
-            width: open ? "200px" : "60px",
+            width: open ? "120px" : "60px",
             transition: "width 0.3s ease",
             zIndex: 1000,
             overflow: "hidden",
@@ -27,26 +27,29 @@ const MagnitudeLegend = () => {
             alignItems: "center",
             marginBottom: open ? "10px" : 0,
         },
-        row: {
+        bars: {
             display: "flex",
-            alignItems: "center",
-            gap: "10px",
+            alignItems: "flex-end",
+            justifyContent: "space-around",
+            height: "60px",
             marginBottom: "6px",
-            fontSize: "13px",
         },
-        colorBox: (color: string) => ({
-            width: "16px",
-            height: "16px",
-            borderRadius: "50%",
-            backgroundColor: color,
-            border: "1px solid #ccc",
+        bar: (height: string) => ({
+            width: "12px",
+            height,
+            backgroundColor: "#ffffff",
         }),
+        labels: {
+            display: "flex",
+            justifyContent: "space-between",
+            fontSize: "12px",
+        },
     }
 
     return (
       <div style={styles.wrapper}>
           <div style={styles.header}>
-              <span>{open ? "🧭 Magnitude Legend" : "🧭"}</span>
+              <span>{open ? "🕳 Depth (km)" : "🕳"}</span>
               <button
                 onClick={() => setOpen(!open)}
                 style={{
@@ -63,21 +66,18 @@ const MagnitudeLegend = () => {
 
           {open && (
             <>
-                <div style={styles.row}>
-                    <div style={styles.colorBox("lime")}></div>
-                    <span>M &lt; 4.0</span>
+                <div style={styles.bars}>
+                    <div style={styles.bar("15%")}></div>
+                    <div style={styles.bar("30%")}></div>
+                    <div style={styles.bar("50%")}></div>
+                    <div style={styles.bar("80%")}></div>
                 </div>
-                <div style={styles.row}>
-                    <div style={styles.colorBox("yellow")}></div>
-                    <span>M 4.0–4.9</span>
-                </div>
-                <div style={styles.row}>
-                    <div style={styles.colorBox("orange")}></div>
-                    <span>M 5.0–5.9</span>
-                </div>
-                <div style={styles.row}>
-                    <div style={styles.colorBox("red")}></div>
-                    <span>M ≥ 6.0</span>
+
+                <div style={styles.labels}>
+                    <span>0</span>
+                    <span>50</span>
+                    <span>150</span>
+                    <span>300+</span>
                 </div>
             </>
           )}
@@ -85,4 +85,4 @@ const MagnitudeLegend = () => {
     )
 }
 
-export default MagnitudeLegend
+export default DepthLegend
