@@ -15,17 +15,12 @@ import {useEffect, useRef, useState} from "react"
 import FilterPanel from "./FilterPanel.tsx"
 import MagnitudeLegend from "./MagnitudeLegend.tsx"
 import InfoPanel from "./InfoPanel.tsx"
+import DepthLegend from "./DepthLegend.tsx";
 
 Ion.defaultAccessToken = import.meta.env.VITE_CESIUM_ION_TOKEN
 
 if (!Ion.defaultAccessToken) {
     console.warn("Cesium Ion token is missing. Add VITE_CESIUM_ION_TOKEN to your .env file.")
-}
-
-function getPixelSizeForMagnitude(mag: number): number {
-    const baseSize = 2
-    const scale = Math.log10(Math.max(mag, 1))
-    return baseSize + scale * 15
 }
 
 function getColorForMagnitude(mag: number): Color {
@@ -38,7 +33,7 @@ function getColorForMagnitude(mag: number): Color {
 type Earthquake = {
     id: string
     magnitude: number
-    coordinates: [number, number, number] // [lon, lat, depth]
+    coordinates: [number, number, number]
     place: string
     time: number
 }
@@ -145,6 +140,7 @@ export default function CesiumGlobe() {
           />
 
           <MagnitudeLegend/>
+          <DepthLegend/>
           <InfoPanel/>
           <Viewer
             ref={viewerRef}
@@ -172,9 +168,12 @@ export default function CesiumGlobe() {
                     key={q.id}
                     name={`M${q.magnitude} - ${q.place}`}
                     position={Cartesian3.fromDegrees(q.coordinates[0], q.coordinates[1])}
-                    point={{
-                        pixelSize: getPixelSizeForMagnitude(q.magnitude),
-                        color: getColorForMagnitude(q.magnitude),
+                    cylinder={{
+                        length: Math.max(50000, q.coordinates[2] * 2000),
+                        topRadius: 0,
+                        bottomRadius: Math.exp(q.magnitude - 3) * 1000,
+                        material: getColorForMagnitude(q.magnitude),
+                        outline: false,
                     }}
                     description={`<b>Magnitude:</b> ${q.magnitude}<br/><b>Depth:</b> ${q.coordinates[2]} km<br/><b>Time:</b> ${new Date(q.time).toLocaleString()}`}
                   />
