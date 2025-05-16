@@ -1,9 +1,7 @@
 import {useState} from "react"
-import {useIsMobile} from "../../utils/useIsMobile.ts";
 
 const MagnitudeLegend = () => {
-    const isMobile = useIsMobile()
-    const [open, setOpen] = useState(!isMobile)
+    const [open, setOpen] = useState(true)
 
     const styles = {
         wrapper: {

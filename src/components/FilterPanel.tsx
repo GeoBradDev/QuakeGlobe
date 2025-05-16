@@ -1,5 +1,4 @@
 import {useState} from "react"
-import {useIsMobile} from "../../utils/useIsMobile.ts";
 
 interface FilterPanelProps {
     minMag: number
@@ -18,8 +17,7 @@ const FilterPanel = ({
                          depthRange,
                          onDepthChange,
                      }: FilterPanelProps) => {
-    const isMobile = useIsMobile()
-    const [expanded, setExpanded] = useState(!isMobile) // FilterPanel
+    const [expanded, setExpanded] = useState(true)
 
 
 
