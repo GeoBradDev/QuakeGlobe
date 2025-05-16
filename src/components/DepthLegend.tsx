@@ -6,8 +6,8 @@ const DepthLegend = () => {
     const styles = {
         wrapper: {
             position: "absolute" as const,
-            top: "75px",
-            right: "20px",
+            bottom: "130px",
+            left: "20px",
             backgroundColor: "rgba(28, 28, 30, 0.95)",
             border: "1px solid #444",
             borderRadius: "12px",
