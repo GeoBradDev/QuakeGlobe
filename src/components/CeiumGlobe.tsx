@@ -11,7 +11,7 @@ import {
     ClockRange,
     ClockViewModel,
 } from "cesium"
-import {useEffect, useRef, useState} from "react"
+import {useEffect, useMemo, useRef, useState} from "react"
 import FilterPanel from "./FilterPanel.tsx"
 import MagnitudeLegend from "./MagnitudeLegend.tsx"
 import InfoPanel from "./InfoPanel.tsx"
@@ -62,7 +62,10 @@ export default function CesiumGlobe() {
 
     const viewerRef = useRef<CesiumComponentRef<CesiumViewer>>(null)
     const clockRef = useRef<Clock | undefined>(undefined)
-    const clockViewModelRef = useRef<ClockViewModel | undefined>(undefined)
+    const clockViewModel = useMemo(() => {
+        if (!clockRef.current) return undefined
+        return new ClockViewModel(clockRef.current)
+    }, [])
 
 
     useEffect(() => {
@@ -112,7 +115,6 @@ export default function CesiumGlobe() {
 
 
             clockRef.current = clock
-            clockViewModelRef.current = new ClockViewModel(clock)
         } else {
             console.warn("Invalid time range: start and stop are equal")
         }
@@ -126,7 +128,6 @@ export default function CesiumGlobe() {
             viewer.timeline?.zoomTo(clock.startTime, clock.stopTime)
         }
     }, [quakes])
-
 
     return (
       <>
@@ -146,7 +147,7 @@ export default function CesiumGlobe() {
             ref={viewerRef}
             full
             terrainProvider={terrainProvider}
-            clockViewModel={clockViewModelRef.current}
+            clockViewModel={clockViewModel}
             timeline
             animation
           >
