@@ -90,12 +90,15 @@ npm run preview   # Serve dist/ locally
 CI (`.github/workflows/ci.yml`) runs on every push and pull request:
 
 - `build`: `npm ci`, `npm run lint`, `npx tsc -b`, `npm test`, `npm run build`
-- `audit`: `npm ci`, `npm audit --omit=dev --audit-level=high` (expected to fail until
-  issue #10 upgrades cesium)
+- `audit`: `npm ci`, `npm audit --omit=dev --audit-level=high`
 - `setup`: `npm ci`, `npm test`, `npm run build` and a check that `dist/cesium` holds
   `Workers`, `ThirdParty`, `Assets` and `Widgets`, on Ubuntu, macOS and Windows. GitHub
   shows these checks as `setup (ubuntu-latest)`, `setup (macos-latest)` and
   `setup (windows-latest)`.
+
+Dependabot (`.github/dependabot.yml`) checks npm packages and GitHub Actions weekly and
+groups minor and patch updates into one pull request per ecosystem; major updates open
+as separate pull requests.
 
 ---
 
