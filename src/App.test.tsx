@@ -1,4 +1,4 @@
-import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest'
+import {afterAll, afterEach, beforeEach, describe, expect, it, vi} from 'vitest'
 import {render, screen} from '@testing-library/react'
 import type {ReactNode} from 'react'
 
@@ -17,9 +17,7 @@ vi.mock('cesium', async (importOriginal) => {
 })
 
 // CeiumGlobe warns at import time when no Cesium Ion token is configured; silence it.
-vi.hoisted(() => {
-    vi.spyOn(console, 'warn').mockImplementation(() => {})
-})
+const warnSpy = vi.hoisted(() => vi.spyOn(console, 'warn').mockImplementation(() => {}))
 
 import App from './App'
 
@@ -48,6 +46,10 @@ describe('App', () => {
 
     afterEach(() => {
         vi.unstubAllGlobals()
+    })
+
+    afterAll(() => {
+        warnSpy.mockRestore()
     })
 
     it('renders the filter panel, legends, info panel and globe', async () => {

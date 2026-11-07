@@ -50,9 +50,11 @@ Domain skills:
   `@testing-library/user-event` (only if used), `vite-plugin-static-copy` (v4, which
   preserves source paths, so each target uses `rename: {stripBase: 4}`). Do not change any runtime dependency
   version.
-- `.nvmrc` (new): `24`.
+- `.nvmrc` (new): `24.18.0`.
 - `render.yaml`: `buildCommand: npm ci && npm run build`; `envVars: - key: NODE_VERSION
-  value: "24"`.
+  value: "24.18.0"`. `engines.node`: `">=24.15.0 <25"`. Exact pin because jsdom 31
+  requires Node `^24.15.0` on the 24 line, so a bare `24` could resolve to a version
+  where `npm test` fails (review round 1).
 - `vite.config.ts`: add `viteStaticCopy` targets copying
   `node_modules/cesium/Build/Cesium/{Workers,ThirdParty,Assets,Widgets}` to `cesium/`;
   add the Vitest `test` block (environment `jsdom`, setup file) with
@@ -66,7 +68,9 @@ Domain skills:
 - `src/lib/earthquakes.test.ts`, `src/components/FilterPanel.test.tsx`,
   `src/App.test.tsx` (new).
 - `.github/workflows/ci.yml` (new).
-- `README.md`: Requirements (Node 24), Testing and linting, Deployment sections.
+- `README.md`: Requirements (Node 24.18.0, floor 24.15.0), Windows PowerShell forms for
+  `.env` and removing `public/cesium`, Testing and linting (with the matrix check names),
+  Deployment sections.
 - `.gitignore`: keep `public/cesium` (harmless for existing clones), no other change.
 
 ## Order of work
@@ -98,7 +102,9 @@ Domain skills:
   - job `build` (ubuntu): npm ci, lint, tsc -b, test, build. Intended required check.
   - job `audit` (ubuntu): npm ci, `npm audit --omit=dev --audit-level=high`. Red until
     #10 lands; made required after #10.
-  - job `setup` matrix (ubuntu, macos, windows): npm ci, test, build. Proves AC 4.
+  - job `setup` matrix (ubuntu, macos, windows): npm ci, test, build, then a node step
+    that fails if `dist/cesium/{Workers,ThirdParty,Assets,Widgets}` is missing. Proves
+    AC 4.
 - "Blocks merge on failure" needs branch protection on `main` (none today). The owner
   applies it; this PR lists the exact check names to require. No step may use
   `continue-on-error` or otherwise soften the audit.
