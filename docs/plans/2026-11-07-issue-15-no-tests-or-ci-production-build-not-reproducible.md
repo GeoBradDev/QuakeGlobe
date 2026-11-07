@@ -45,8 +45,10 @@ Domain skills:
 - `package.json`, `package-lock.json`: add `test` (`vitest run`) script; remove
   `postinstall`; add `engines.node`; add devDependencies `vitest@^3.2` (vitest 4 needs
   vite >= 6.4, and bumping vite belongs to issue #10), `jsdom`,
-  `@testing-library/react`, `@testing-library/jest-dom`, `@testing-library/user-event`
-  (only if used), `vite-plugin-static-copy`. Do not change any runtime dependency
+  `@testing-library/react`, `@testing-library/dom` (required peer of
+  `@testing-library/react` 16), `@testing-library/jest-dom`,
+  `@testing-library/user-event` (only if used), `vite-plugin-static-copy` (v4, which
+  preserves source paths, so each target uses `rename: {stripBase: 4}`). Do not change any runtime dependency
   version.
 - `.nvmrc` (new): `24`.
 - `render.yaml`: `buildCommand: npm ci && npm run build`; `envVars: - key: NODE_VERSION
