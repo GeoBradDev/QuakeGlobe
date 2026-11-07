@@ -35,7 +35,7 @@
 
 - Node.js 24.15.0 or newer on the 24 line (`.nvmrc` pins 24.18.0 and `package.json`
   `engines` requires `>=24.15.0 <25`, the floor jsdom needs for the test suite; run
-  `nvm use` to switch)
+  `nvm use` to switch; nvm-windows: `nvm install 24.18.0` then `nvm use 24.18.0`)
 - npm (ships with Node)
 
 ```bash

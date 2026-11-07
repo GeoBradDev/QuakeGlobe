@@ -24,9 +24,10 @@ Domain skills:
    separate step: `npm ci`, `npm run lint`, `npx tsc -b`, `npm test`, `npm run build`,
    `npm audit --omit=dev --audit-level=high`. Any failing step fails its job. (Making the
    job a required check on `main` is a repo setting the owner applies; see Risks.)
-3. `render.yaml` builds with `npm ci && npm run build` and sets `NODE_VERSION`; Node is
-   pinned identically in `.nvmrc`, `package.json` `engines.node`, `render.yaml` and the
-   workflow (via `node-version-file: .nvmrc`).
+3. `render.yaml` builds with `npm ci && npm run build`. Node is pinned to 24.18.0 in
+   `.nvmrc`, `render.yaml` (`NODE_VERSION`) and the workflow (via
+   `node-version-file: .nvmrc`), and `package.json` `engines.node` (`>=24.15.0 <25`)
+   admits it and rejects versions below the toolchain floor.
 4. Fresh clone setup works on Linux, macOS and Windows: no shell-only `postinstall`;
    Cesium static assets (`Workers`, `ThirdParty`, `Assets`, `Widgets`) are copied by
    `vite-plugin-static-copy` to `/cesium` in both `vite` dev and `vite build`. CI proves

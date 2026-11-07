@@ -62,4 +62,4 @@ jobs:
       - name: Build
         run: npm run build
       - name: Verify Cesium assets
-        run: node -e "for (const d of ['Workers', 'ThirdParty', 'Assets', 'Widgets']) require('fs').statSync('dist/cesium/' + d)"
+        run: node -e "const fs = require('fs'); for (const d of ['Workers', 'ThirdParty', 'Assets', 'Widgets']) { const p = 'dist/cesium/' + d; if (fs.existsSync(p) === false || fs.statSync(p).isDirectory() === false || fs.readdirSync(p).length < 1) throw new Error(p + ' is missing or empty') }"
