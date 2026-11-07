@@ -6,17 +6,21 @@ import {
     createWorldTerrainAsync,
     TerrainProvider,
     Ion,
-    Clock,
     JulianDate,
-    ClockRange,
-    ClockViewModel,
 } from "cesium"
 import {useEffect, useMemo, useRef, useState} from "react"
 import FilterPanel from "./FilterPanel.tsx"
 import MagnitudeLegend from "./MagnitudeLegend.tsx"
 import InfoPanel from "./InfoPanel.tsx"
 import DepthLegend from "./DepthLegend.tsx";
-import {isQuakeVisible, parseUsgsFeed, type Earthquake} from "../lib/earthquakes.ts"
+import {
+    configureClock,
+    getTimeRange,
+    matchesFilters,
+    parseUsgsFeed,
+    quakeAvailability,
+    type Earthquake,
+} from "../lib/earthquakes.ts"
 
 Ion.defaultAccessToken = import.meta.env.VITE_CESIUM_ION_TOKEN
 
@@ -39,15 +43,8 @@ export default function CesiumGlobe() {
     const [terrainProvider, setTerrainProvider] = useState<TerrainProvider>()
     const [magRange, setMagRange] = useState<[number, number]>([0, 10])
     const [depthRange, setDepthRange] = useState<[number, number]>([0, 700])
-    const [currentTime, setCurrentTime] = useState<JulianDate>()
 
     const viewerRef = useRef<CesiumComponentRef<CesiumViewer>>(null)
-    const clockRef = useRef<Clock | undefined>(undefined)
-    const clockViewModel = useMemo(() => {
-        if (!clockRef.current) return undefined
-        return new ClockViewModel(clockRef.current)
-    }, [])
-
 
     useEffect(() => {
         createWorldTerrainAsync().then(setTerrainProvider)
@@ -61,47 +58,32 @@ export default function CesiumGlobe() {
           })
     }, [])
 
-    useEffect(() => {
-        if (quakes.length === 0 || clockRef.current) return
-
-        const sorted = [...quakes].sort((a, b) => a.time - b.time)
-        const start = JulianDate.fromDate(new Date(sorted[0].time), new JulianDate())
-        const stop = JulianDate.fromDate(new Date(sorted[sorted.length - 1].time), new JulianDate())
-
-
-        if (JulianDate.lessThan(start, stop)) {
-            const clock = new Clock({
-                startTime: start,
-                currentTime: JulianDate.clone(start),
-                stopTime: stop,
-                clockRange: ClockRange.LOOP_STOP,
-                multiplier: 10000,
-                shouldAnimate: true,
-            })
-
-            clock.onTick.addEventListener((c) => {
-                setCurrentTime(JulianDate.clone(c.currentTime))
-
-                if (JulianDate.greaterThanOrEquals(c.currentTime, c.stopTime)) {
-                    c.shouldAnimate = false
-                }
-            })
-
-
-            clockRef.current = clock
-        } else {
-            console.warn("Invalid time range: start and stop are equal")
-        }
-    }, [quakes])
-
+    // Drive the viewer's own clock: time visibility is applied by Cesium through
+    // each entity's availability, so no clock tick ever reaches React state.
     useEffect(() => {
         const viewer = viewerRef.current?.cesiumElement
-        const clock = clockRef.current
+        if (!viewer || viewer.isDestroyed()) return
 
-        if (viewer && clock) {
-            viewer.timeline?.zoomTo(clock.startTime, clock.stopTime)
+        const range = getTimeRange(quakes)
+        if (!range) return
+        if (!JulianDate.lessThan(range.start, range.stop)) {
+            console.warn("Invalid time range: start and stop are equal")
+            return
         }
+
+        configureClock(viewer.clock, range)
+        viewer.timeline?.zoomTo(range.start, range.stop)
     }, [quakes])
+
+    const availabilityById = useMemo(
+      () => new Map(quakes.map((q) => [q.id, quakeAvailability(q)])),
+      [quakes],
+    )
+
+    const filteredQuakes = useMemo(
+      () => quakes.filter((q) => matchesFilters(q, magRange, depthRange)),
+      [quakes, magRange, depthRange],
+    )
 
     return (
       <>
@@ -121,15 +103,13 @@ export default function CesiumGlobe() {
             ref={viewerRef}
             full
             terrainProvider={terrainProvider}
-            clockViewModel={clockViewModel}
             timeline
             animation
           >
-              {quakes
-                .filter((q) => isQuakeVisible(q, magRange, depthRange, currentTime))
-                .map((q) => (
+              {filteredQuakes.map((q) => (
                   <Entity
                     key={q.id}
+                    availability={availabilityById.get(q.id)}
                     name={`M${q.magnitude} - ${q.place}`}
                     position={Cartesian3.fromDegrees(q.coordinates[0], q.coordinates[1])}
                     cylinder={{
@@ -141,7 +121,7 @@ export default function CesiumGlobe() {
                     }}
                     description={`<b>Magnitude:</b> ${q.magnitude}<br/><b>Depth:</b> ${q.coordinates[2]} km<br/><b>Time:</b> ${new Date(q.time).toLocaleString()}`}
                   />
-                ))}
+              ))}
           </Viewer>
       </>
     )
