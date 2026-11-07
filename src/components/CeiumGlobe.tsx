@@ -16,6 +16,7 @@ import FilterPanel from "./FilterPanel.tsx"
 import MagnitudeLegend from "./MagnitudeLegend.tsx"
 import InfoPanel from "./InfoPanel.tsx"
 import DepthLegend from "./DepthLegend.tsx";
+import {isQuakeVisible, parseUsgsFeed, type Earthquake} from "../lib/earthquakes.ts"
 
 Ion.defaultAccessToken = import.meta.env.VITE_CESIUM_ION_TOKEN
 
@@ -28,26 +29,6 @@ function getColorForMagnitude(mag: number): Color {
     if (mag >= 5) return Color.ORANGE
     if (mag >= 4) return Color.YELLOW
     return Color.LIME
-}
-
-type Earthquake = {
-    id: string
-    magnitude: number
-    coordinates: [number, number, number]
-    place: string
-    time: number
-}
-
-interface USGSFeature {
-    id: string
-    properties: {
-        mag: number
-        place: string
-        time: number
-    }
-    geometry: {
-        coordinates: [number, number, number]
-    }
 }
 
 const USGS_URL =
@@ -76,14 +57,7 @@ export default function CesiumGlobe() {
         fetch(USGS_URL)
           .then((res) => res.json())
           .then((data) => {
-              const features = (data.features as USGSFeature[]).map((f) => ({
-                  id: f.id,
-                  magnitude: f.properties.mag,
-                  coordinates: f.geometry.coordinates,
-                  place: f.properties.place,
-                  time: f.properties.time,
-              }))
-              setQuakes(features)
+              setQuakes(parseUsgsFeed(data))
           })
     }, [])
 
@@ -152,18 +126,7 @@ export default function CesiumGlobe() {
             animation
           >
               {quakes
-                .filter((q) => {
-                    if (!currentTime) return true
-
-                    const quakeTime = JulianDate.fromDate(new Date(q.time))
-                    return (
-                      q.magnitude >= magRange[0] &&
-                      q.magnitude <= magRange[1] &&
-                      q.coordinates[2] >= depthRange[0] &&
-                      q.coordinates[2] <= depthRange[1] &&
-                      JulianDate.lessThanOrEquals(quakeTime, currentTime)
-                    )
-                })
+                .filter((q) => isQuakeVisible(q, magRange, depthRange, currentTime))
                 .map((q) => (
                   <Entity
                     key={q.id}
