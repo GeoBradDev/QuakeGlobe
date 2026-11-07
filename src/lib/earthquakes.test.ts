@@ -148,7 +148,7 @@ describe('quakeAvailability', () => {
         const availability = quakeAvailability(makeQuake())
 
         expect(availability.length).toBe(1)
-        const interval = availability.get(0)
+        const interval = availability.get(0)!
         expect(JulianDate.equals(interval.start, julian(QUAKE_TIME))).toBe(true)
         expect(interval.isStartIncluded).toBe(true)
         expect(JulianDate.equals(interval.stop, Iso8601.MAXIMUM_VALUE)).toBe(true)

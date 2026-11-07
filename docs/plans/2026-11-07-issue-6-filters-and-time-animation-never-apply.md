@@ -24,7 +24,7 @@ Domain skills:
    is the earliest quake in the feed, stop time the latest, current time equals the start
    time, multiplier 10000, and the timeline is zoomed to that range. The animation widget
    therefore shows the earliest quake's date. Whether the clock starts animating is the
-   named constant `START_ANIMATING` (default `true`, see Open decision); either way,
+   named constant `START_ANIMATING` (`true`, decided by the user, see Decision); either way,
    play advances time and reveals quakes in chronological order, pause stops it, and the
    clock stops at the stop time instead of running past it.
 3. Dragging the timeline scrubber updates which quakes are visible (a quake is visible
@@ -119,12 +119,12 @@ Domain skills:
 - Out of scope: NaN or inverted filter inputs (#12), entity rendering cost (#9), depth
   symbology (#14).
 
-## Open decision
+## Decision: autoplay on load
 
-Autoplay versus paused on load is a product decision taken to the user (approved plan,
-2026-11-07). Implemented as `START_ANIMATING = true`, matching the original author's
-`shouldAnimate: true` config: the clock autoplays from the earliest quake at 10000x. If
-the user picks paused, flip the constant and the one test expectation that names it.
+Autoplay versus paused on load was a product decision taken to the user, who decided
+(2026-11-07) to autoplay from the earliest quake at 10000x, matching the original
+author's `shouldAnimate: true` config. Implemented as `START_ANIMATING = true`; tests
+assert against the constant, so a later flip needs at most a one-line test change.
 
 ## Proof
 
@@ -142,3 +142,15 @@ the user picks paused, flip the constant and the one test expectation that names
 - Criterion 6: code review of `CeiumGlobe.tsx` (no `useState` for time, no `Clock`
   construction, no `onTick`); live drive measures frame rate versus main, idle and while
   playing.
+
+### Frozen test rewrite (approved by the user)
+
+`src/lib/earthquakes.test.ts`, case `quakeAvailability > starts at the quake time
+inclusive and never ends`, frozen red in 9932d06, failed `npx tsc -b` with TS18048
+(`interval` is possibly undefined) because Cesium types `TimeIntervalCollection.get` as
+`TimeInterval | undefined`. The user approved one change only: narrow
+`availability.get(0)` to `availability.get(0)!`; no assertion changed. Proof it still
+catches the defect: in a scratch worktree at the merge base 2ef9155 with only the
+rewritten test applied, `npx vitest run src/lib/earthquakes.test.ts -t "starts at the
+quake time inclusive"` fails with `TypeError: quakeAvailability is not a function`
+(1 failed, 27 skipped). The rewritten test is frozen again.
