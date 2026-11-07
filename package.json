@@ -8,7 +8,6 @@
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "postinstall": "mkdir -p public/cesium && cp -r node_modules/cesium/Build/Cesium/* public/cesium/",
     "test": "vitest run"
   },
   "dependencies": {
@@ -34,6 +33,7 @@
     "typescript": "~5.7.2",
     "typescript-eslint": "^8.26.1",
     "vite": "^6.3.1",
+    "vite-plugin-static-copy": "^4.1.1",
     "vitest": "^3.2.7"
   }
 }
