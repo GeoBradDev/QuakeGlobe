@@ -86,6 +86,9 @@ export default function CesiumGlobe() {
     useEffect(() => {
         if (!viewer || viewer.isDestroyed()) return
         viewer.allowDataSourcesToSuspendAnimation = false
+        return () => {
+            if (!viewer.isDestroyed()) viewer.allowDataSourcesToSuspendAnimation = true
+        }
     }, [viewer])
 
     // Drive the viewer's own clock: time visibility is applied by Cesium through

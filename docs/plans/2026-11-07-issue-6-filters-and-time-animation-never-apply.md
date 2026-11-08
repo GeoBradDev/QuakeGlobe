@@ -93,7 +93,12 @@ Domain skills:
     `useCallback` ref instead of reading `viewerRef.current` once, and key the clock
     effect on `[quakes, viewer]`. Resium exposes `cesiumElement` only after its async
     create (`useImperativeHandle` with deps `[mounted]`), so a feed that resolves before
-    the viewer mounts, or a recreated viewer, still gets its clock configured.
+    the viewer mounts, or a recreated viewer, still gets its clock configured. Test:
+    `src/components/CeiumGlobe.lateViewer.test.tsx`.
+  - Added after review (defect F): the effect that turns off
+    `allowDataSourcesToSuspendAnimation` restores `true` in its cleanup when the viewer
+    is not destroyed, as criterion 6 requires. Test:
+    `src/components/CeiumGlobe.suspendCleanup.test.tsx`.
   - Added for end of playback (defect E): the clock effect calls
     `attachEndOfPlayback(viewer.clock)` after configuring the clock and returns its
     remover as the effect cleanup, so both listeners go on unmount or viewer change.
@@ -154,6 +159,9 @@ Domain skills:
 - Behavior change on load: before, every quake was drawn; now quakes appear over time
   from the earliest one. That is the documented intent of the feature but starts as a
   nearly empty globe. Noted in the PR body.
+- Suspension off at load: with `allowDataSourcesToSuspendAnimation` false, the 10000x
+  autoplay keeps running while Cesium builds the first batch of about 10k entities, so
+  the earliest quakes may pop in slightly late instead of the clock waiting for them.
 - Out of scope: NaN or inverted filter inputs (#12), entity rendering cost (#9), depth
   symbology (#14).
 
