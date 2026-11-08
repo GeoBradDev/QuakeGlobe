@@ -1,8 +1,7 @@
 import {useState} from "react"
+import {DEFAULT_DEPTH_RANGE, DEFAULT_MAG_RANGE} from "../lib/earthquakes.ts"
 
 interface FilterPanelProps {
-    minMag: number
-    maxMag: number
     magRange: [number, number]
     onMagChange: (range: [number, number]) => void
     depthRange: [number, number]
@@ -10,8 +9,6 @@ interface FilterPanelProps {
 }
 
 const FilterPanel = ({
-                         minMag,
-                         maxMag,
                          magRange,
                          onMagChange,
                          depthRange,
@@ -26,8 +23,8 @@ const FilterPanel = ({
     }
 
     const clearFilters = () => {
-        onMagChange([minMag, maxMag])
-        onDepthChange([0, 700])
+        onMagChange(DEFAULT_MAG_RANGE)
+        onDepthChange(DEFAULT_DEPTH_RANGE)
     }
 
     return (
@@ -89,7 +86,7 @@ const FilterPanel = ({
                           type="number"
                           step="0.1"
                           value={magRange[0]}
-                          min={minMag}
+                          min={DEFAULT_MAG_RANGE[0]}
                           max={magRange[1]}
                           onChange={(e) =>
                             updateMagRange([parseFloat(e.target.value), magRange[1]])
@@ -113,7 +110,7 @@ const FilterPanel = ({
                           step="0.1"
                           value={magRange[1]}
                           min={magRange[0]}
-                          max={maxMag}
+                          max={DEFAULT_MAG_RANGE[1]}
                           onChange={(e) =>
                             updateMagRange([magRange[0], parseFloat(e.target.value)])
                           }
@@ -135,7 +132,7 @@ const FilterPanel = ({
                           type="number"
                           step="10"
                           min={depthRange[0]}
-                          max={700}
+                          max={DEFAULT_DEPTH_RANGE[1]}
                           value={depthRange[1]}
                           onChange={(e) =>
                             onDepthChange([depthRange[0], parseFloat(e.target.value)])

@@ -16,10 +16,14 @@ import DepthLegend from "./DepthLegend.tsx";
 import {
     attachEndOfPlayback,
     configureClock,
+    DEFAULT_DEPTH_RANGE,
+    DEFAULT_MAG_RANGE,
     getTimeRange,
     matchesFilters,
     parseUsgsFeed,
     quakeAvailability,
+    quakeDescription,
+    quakeName,
     type Earthquake,
 } from "../lib/earthquakes.ts"
 
@@ -29,7 +33,8 @@ if (!Ion.defaultAccessToken) {
     console.warn("Cesium Ion token is missing. Add VITE_CESIUM_ION_TOKEN to your .env file.")
 }
 
-function getColorForMagnitude(mag: number): Color {
+function getColorForMagnitude(mag: number | null): Color {
+    if (mag === null) return Color.GRAY
     if (mag >= 6) return Color.RED
     if (mag >= 5) return Color.ORANGE
     if (mag >= 4) return Color.YELLOW
@@ -38,17 +43,17 @@ function getColorForMagnitude(mag: number): Color {
 
 function quakeEntityProps(q: Earthquake) {
     return {
-        name: `M${q.magnitude} - ${q.place}`,
+        name: quakeName(q),
         availability: quakeAvailability(q),
         position: Cartesian3.fromDegrees(q.coordinates[0], q.coordinates[1]),
         cylinder: {
             length: Math.max(50000, q.coordinates[2] * 2000),
             topRadius: 0,
-            bottomRadius: Math.exp(q.magnitude - 3) * 1000,
+            bottomRadius: Math.exp((q.magnitude ?? 0) - 3) * 1000,
             material: getColorForMagnitude(q.magnitude),
             outline: false,
         },
-        description: `<b>Magnitude:</b> ${q.magnitude}<br/><b>Depth:</b> ${q.coordinates[2]} km<br/><b>Time:</b> ${new Date(q.time).toLocaleString()}`,
+        description: quakeDescription(q),
     }
 }
 
@@ -58,8 +63,8 @@ const USGS_URL =
 export default function CesiumGlobe() {
     const [quakes, setQuakes] = useState<Earthquake[]>([])
     const [terrainProvider, setTerrainProvider] = useState<TerrainProvider>()
-    const [magRange, setMagRange] = useState<[number, number]>([0, 10])
-    const [depthRange, setDepthRange] = useState<[number, number]>([0, 700])
+    const [magRange, setMagRange] = useState<[number, number]>(DEFAULT_MAG_RANGE)
+    const [depthRange, setDepthRange] = useState<[number, number]>(DEFAULT_DEPTH_RANGE)
 
     // Resium exposes the Cesium viewer only after its async create, and updates the
     // handle if the viewer is recreated, so track it in state through a callback ref.
@@ -124,8 +129,6 @@ export default function CesiumGlobe() {
     return (
       <>
           <FilterPanel
-            minMag={0}
-            maxMag={10}
             magRange={magRange}
             onMagChange={setMagRange}
             depthRange={depthRange}
