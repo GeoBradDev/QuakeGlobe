@@ -79,6 +79,14 @@ export default function CesiumGlobe() {
           })
     }, [])
 
+    // A filter change makes Cesium rebuild its geometry batches asynchronously. Keep the
+    // clock running meanwhile. Resium passes the allowDataSourcesToSuspendAnimation prop
+    // only to the Viewer constructor, which ignores it, so set it on the instance too.
+    useEffect(() => {
+        if (!viewer || viewer.isDestroyed()) return
+        viewer.allowDataSourcesToSuspendAnimation = false
+    }, [viewer])
+
     // Drive the viewer's own clock: time visibility is applied by Cesium through
     // each entity's availability, so no clock tick ever reaches React state.
     useEffect(() => {

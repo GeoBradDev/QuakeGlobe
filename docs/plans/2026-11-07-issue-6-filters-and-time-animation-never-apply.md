@@ -79,7 +79,12 @@ Domain skills:
     and Resium does not reassign them. Set `allowDataSourcesToSuspendAnimation={false}`
     on `<Viewer>` (a mutable Resium Viewer prop, not read-only) so the geometry batch
     rebuild after a filter change cannot set `clock.canAnimate = false` and stall
-    playback. Test: `src/components/CeiumGlobe.props.test.tsx`.
+    playback. Test: `src/components/CeiumGlobe.props.test.tsx`. The live drive then
+    showed the prop alone has no effect: Resium 1.28 passes it only to the Cesium
+    `Viewer` constructor, which ignores that option, and Resium only reassigns it when
+    the prop later changes. So an effect keyed on the viewer also sets
+    `viewer.allowDataSourcesToSuspendAnimation = false` on the instance. Test:
+    `src/components/CeiumGlobe.suspend.test.tsx`.
   - Added after review (defect B): hold the Cesium viewer in state through a stable
     `useCallback` ref instead of reading `viewerRef.current` once, and key the clock
     effect on `[quakes, viewer]`. Resium exposes `cesiumElement` only after its async
