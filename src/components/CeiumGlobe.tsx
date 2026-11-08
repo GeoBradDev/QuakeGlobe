@@ -26,6 +26,7 @@ import {
     quakeName,
     type Earthquake,
 } from "../lib/earthquakes.ts"
+import {allowInfoBoxPopupsToEscapeSandbox} from "../lib/infoBox.ts"
 
 Ion.defaultAccessToken = import.meta.env.VITE_CESIUM_ION_TOKEN
 
@@ -94,6 +95,11 @@ export default function CesiumGlobe() {
         return () => {
             if (!viewer.isDestroyed()) viewer.allowDataSourcesToSuspendAnimation = true
         }
+    }, [viewer])
+
+    // Let the "USGS event page" link in the popup open a tab that runs its scripts.
+    useEffect(() => {
+        if (viewer) allowInfoBoxPopupsToEscapeSandbox(viewer)
     }, [viewer])
 
     // Drive the viewer's own clock: time visibility is applied by Cesium through

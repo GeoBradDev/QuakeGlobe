@@ -160,6 +160,16 @@ the choice only matters for future data.
   one-decimal formatter for magnitude (name and popup) and depth (popup); it maps a value
   that rounds to negative zero (for example -0.04) to `0.0`, so no `M-0.0` or
   `-0.0 km` is shown. Tested in the new `src/lib/formatting.test.ts`.
+- Review fix: new `src/lib/infoBox.ts` `allowInfoBoxPopupsToEscapeSandbox(viewer)`, called
+  from a `[viewer]` effect in `CeiumGlobe.tsx`. Cesium's InfoBox iframe is sandboxed with
+  `allow-same-origin allow-popups allow-forms`, so the tab opened by the USGS link
+  inherited the sandbox and ran no scripts. The helper adds
+  `allow-popups-to-escape-sandbox` (keeping the existing tokens, never `allow-scripts`),
+  disposes the InfoBox's description subscription and reloads the frame so the new
+  sandbox applies; the InfoBox load handler then re-injects its CSS and content element.
+  Guards a destroyed viewer and a missing or destroyed InfoBox. Tested in the new
+  `src/lib/infoBox.test.ts` (real Cesium InfoBox in jsdom) and
+  `src/components/CeiumGlobe.infoBox.test.tsx`.
 
 ## Order of work
 
@@ -188,6 +198,12 @@ the choice only matters for future data.
 - Popup XSS: `description` is HTML that Cesium renders in the InfoBox iframe. Feed text
   is escaped and the link is restricted to `https://earthquake.usgs.gov`, so a
   compromised or malformed feed cannot inject markup or a `javascript:` link.
+- InfoBox sandbox: the popup link opens with `allow-popups-to-escape-sandbox`, so the
+  opened USGS page runs unsandboxed. The description iframe itself still has no
+  `allow-scripts`, and the link is limited to `https://earthquake.usgs.gov`. The helper
+  touches the private `_descriptionSubscription` field defensively; a Cesium upgrade
+  that renames it would leave one stale subscription writing to the old document, which
+  is harmless because the new one runs after it.
 - Entity names are the keys several component tests look up (`M6.4 - Chile`). The
   earthquake format is kept, and `toFixed(1)` yields the same text for the one-decimal
   magnitudes those tests use.
