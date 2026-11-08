@@ -52,8 +52,9 @@ export default function InfoPanel() {
           </p>
 
           <p>
-              Use the filter panel to refine by magnitude or depth, or press play in the timeline below to animate
-              earthquakes in the order they occurred.
+              Earthquakes appear in the order they occurred, as the animation plays automatically from the
+              earliest quake. Use the animation controls at the bottom left to pause or play it, drag the
+              timeline to move through time, and use the filter panel to refine by magnitude or depth.
           </p>
       </div>
     )
