@@ -8,7 +8,7 @@ import {
     Ion,
     JulianDate,
 } from "cesium"
-import {useEffect, useMemo, useRef, useState} from "react"
+import {useCallback, useEffect, useMemo, useState} from "react"
 import FilterPanel from "./FilterPanel.tsx"
 import MagnitudeLegend from "./MagnitudeLegend.tsx"
 import InfoPanel from "./InfoPanel.tsx"
@@ -60,7 +60,12 @@ export default function CesiumGlobe() {
     const [magRange, setMagRange] = useState<[number, number]>([0, 10])
     const [depthRange, setDepthRange] = useState<[number, number]>([0, 700])
 
-    const viewerRef = useRef<CesiumComponentRef<CesiumViewer>>(null)
+    // Resium exposes the Cesium viewer only after its async create, and updates the
+    // handle if the viewer is recreated, so track it in state through a callback ref.
+    const [viewer, setViewer] = useState<CesiumViewer>()
+    const viewerRef = useCallback((handle: CesiumComponentRef<CesiumViewer> | null) => {
+        setViewer(handle?.cesiumElement ?? undefined)
+    }, [])
 
     useEffect(() => {
         createWorldTerrainAsync().then(setTerrainProvider)
@@ -77,7 +82,6 @@ export default function CesiumGlobe() {
     // Drive the viewer's own clock: time visibility is applied by Cesium through
     // each entity's availability, so no clock tick ever reaches React state.
     useEffect(() => {
-        const viewer = viewerRef.current?.cesiumElement
         if (!viewer || viewer.isDestroyed()) return
 
         const range = getTimeRange(quakes)
@@ -89,7 +93,7 @@ export default function CesiumGlobe() {
 
         configureClock(viewer.clock, range)
         viewer.timeline?.zoomTo(range.start, range.stop)
-    }, [quakes])
+    }, [quakes, viewer])
 
     // Build each quake's entity props once per feed. A surviving entity then keeps
     // the same object references when a filter changes, so Resium does not
