@@ -148,6 +148,66 @@ describe('CesiumGlobe', () => {
         })
     })
 
+    it('renders negative, null-magnitude and non-earthquake events with default filters', async () => {
+        const edgeFeed = {
+            type: 'FeatureCollection',
+            features: [
+                feature('neg-mag', -1.5, 4, T_SMALL, 'Nevada'),
+                feature('neg-depth', 1.2, -3.4, T_DEEP, 'Hawaii'),
+                {
+                    type: 'Feature',
+                    id: 'null-mag',
+                    properties: {mag: null, place: 'Utah', time: T_DEEP},
+                    geometry: {type: 'Point', coordinates: [0, 0, 8]},
+                },
+                {
+                    type: 'Feature',
+                    id: 'blast',
+                    properties: {mag: 1.8, place: '5 km SE of X', time: T_BIG, type: 'quarry blast'},
+                    geometry: {type: 'Point', coordinates: [0, 0, 0]},
+                },
+                feature('deepest', 4.6, 750, T_BIG, 'Bonin Islands'),
+            ],
+        }
+        vi.stubGlobal('fetch', vi.fn(() => Promise.resolve(new Response(JSON.stringify(edgeFeed)))))
+
+        render(<CesiumGlobe/>)
+
+        await waitFor(() => expect(screen.getAllByTestId('quake-entity')).toHaveLength(5))
+        expect([...entityNames()].sort()).toEqual([
+            'M-1.5 - Nevada',
+            'M1.2 - Hawaii',
+            'M1.8 Quarry blast - 5 km SE of X',
+            'M4.6 - Bonin Islands',
+            'M? - Utah',
+        ])
+    })
+
+    it('hides a null-magnitude event once Min Magnitude is narrowed and shows it again on Reset', async () => {
+        const nullFeed = {
+            type: 'FeatureCollection',
+            features: [
+                feature('known', 3.2, 10, T_SMALL, 'Alaska'),
+                {
+                    type: 'Feature',
+                    id: 'null-mag',
+                    properties: {mag: null, place: 'Utah', time: T_BIG},
+                    geometry: {type: 'Point', coordinates: [0, 0, 8]},
+                },
+            ],
+        }
+        vi.stubGlobal('fetch', vi.fn(() => Promise.resolve(new Response(JSON.stringify(nullFeed)))))
+
+        render(<CesiumGlobe/>)
+        await waitFor(() => expect(screen.getAllByTestId('quake-entity')).toHaveLength(2))
+
+        fireEvent.change(screen.getByLabelText('Min Magnitude'), {target: {value: '0'}})
+        expect(entityNames()).toEqual(['M3.2 - Alaska'])
+
+        fireEvent.click(screen.getByRole('button', {name: 'Reset Filters'}))
+        expect([...entityNames()].sort()).toEqual(['M3.2 - Alaska', 'M? - Utah'])
+    })
+
     it('leaves the clock time and play state alone when a filter changes', async () => {
         await renderLoaded()
         const {clock} = viewerHolder.current
