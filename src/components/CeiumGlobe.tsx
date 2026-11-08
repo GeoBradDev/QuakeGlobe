@@ -2,7 +2,6 @@ import {Viewer as CesiumViewer} from "cesium"
 import {Viewer, Entity, CesiumComponentRef} from "resium"
 import {
     Cartesian3,
-    Color,
     createWorldTerrainAsync,
     TerrainProvider,
     Ion,
@@ -27,6 +26,7 @@ import {
     type Earthquake,
 } from "../lib/earthquakes.ts"
 import {allowInfoBoxPopupsToEscapeSandbox} from "../lib/infoBox.ts"
+import {quakeCylinder} from "../lib/quakeSymbol.ts"
 
 Ion.defaultAccessToken = import.meta.env.VITE_CESIUM_ION_TOKEN
 
@@ -34,26 +34,12 @@ if (!Ion.defaultAccessToken) {
     console.warn("Cesium Ion token is missing. Add VITE_CESIUM_ION_TOKEN to your .env file.")
 }
 
-function getColorForMagnitude(mag: number | null): Color {
-    if (mag === null) return Color.GRAY
-    if (mag >= 6) return Color.RED
-    if (mag >= 5) return Color.ORANGE
-    if (mag >= 4) return Color.YELLOW
-    return Color.LIME
-}
-
 function quakeEntityProps(q: Earthquake) {
     return {
         name: quakeName(q),
         availability: quakeAvailability(q),
         position: Cartesian3.fromDegrees(q.coordinates[0], q.coordinates[1]),
-        cylinder: {
-            length: Math.max(50000, q.coordinates[2] * 2000),
-            topRadius: 0,
-            bottomRadius: Math.exp((q.magnitude ?? 0) - 3) * 1000,
-            material: getColorForMagnitude(q.magnitude),
-            outline: false,
-        },
+        cylinder: quakeCylinder(q),
         description: quakeDescription(q),
     }
 }
