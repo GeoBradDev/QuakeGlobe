@@ -129,7 +129,9 @@ the choice only matters for future data.
       `new URL(raw)` succeeds with `protocol === "https:"` and
       `hostname === "earthquake.usgs.gov"`; else `null`.
     - `escapeHtml(s: string): string`: escapes `& < > " '`.
-    - `formatMagnitude(m: number | null): string`: `m.toFixed(1)` or `"?"`.
+    - `formatOneDecimal(n: number): string`: `n.toFixed(1)`, with a rounded negative
+      zero (`-0.0`) shown as `0.0`; the one formatter for magnitude and depth.
+    - `formatMagnitude(m: number | null): string`: `formatOneDecimal(m)` or `"?"`.
     - `formatEventType(t: string): string`: first letter upper-cased
       (`quarry blast` -> `Quarry blast`).
     - `quakeName(q)`: `M${formatMagnitude} - ${place}` for type `earthquake`, else
@@ -167,9 +169,12 @@ the choice only matters for future data.
   `allow-popups-to-escape-sandbox` (keeping the existing tokens, never `allow-scripts`),
   disposes the InfoBox's description subscription and reloads the frame so the new
   sandbox applies; the InfoBox load handler then re-injects its CSS and content element.
-  Guards a destroyed viewer and a missing or destroyed InfoBox. Tested in the new
-  `src/lib/infoBox.test.ts` (real Cesium InfoBox in jsdom) and
-  `src/components/CeiumGlobe.infoBox.test.tsx`.
+  Guards a destroyed viewer and a missing or destroyed InfoBox. If the frame has not
+  finished its first load (no `.cesium-infoBox-description` yet), the change waits for
+  that load in a `{once: true}` listener (registered once per frame, guards re-checked
+  inside), so the InfoBox load handler never runs twice. Tested in the new
+  `src/lib/infoBox.test.ts`, `src/lib/infoBox.beforeLoad.test.ts` (real Cesium InfoBox
+  in jsdom) and `src/components/CeiumGlobe.infoBox.test.tsx`.
 
 ## Order of work
 
@@ -203,9 +208,11 @@ the choice only matters for future data.
   `allow-scripts`, and the link is limited to `https://earthquake.usgs.gov`. The helper
   touches the private `_descriptionSubscription` field defensively; a Cesium upgrade
   that renames it would leave one stale subscription writing to the old document, which
-  is harmless because the new one runs after it.
+  is harmless because the new one runs after it. Reloading before the first load could
+  run the InfoBox load handler twice (two stylesheets, two content elements, the
+  description shown twice), so the helper defers to that load instead.
 - Entity names are the keys several component tests look up (`M6.4 - Chile`). The
-  earthquake format is kept, and `toFixed(1)` yields the same text for the one-decimal
+  earthquake format is kept, and `formatOneDecimal` yields the same text for the one-decimal
   magnitudes those tests use.
 - The `entityPropsById` memo must still build props once per feed; the new helpers are
   called inside `quakeEntityProps`, so referential stability (the #6 props test) holds.
@@ -231,3 +238,16 @@ the choice only matters for future data.
 - AC 8: existing suite green; live drive shows autoplay from the earliest quake, a
   narrowed filter reducing the count and Reset restoring the full count, and
   end-of-playback pausing at the stop time.
+- Review fix, negative zero: `src/lib/formatting.test.ts` (`formatOneDecimal`, name and
+  popup never show `-0.0`, -0.5 stays negative). Live drive: a feed event with a depth
+  between -0.05 and 0 km shows `Depth: 0.0 km`, and no entity name or popup contains
+  `-0.0`.
+- Review fix, InfoBox sandbox: `src/lib/infoBox.test.ts` (token added, existing tokens
+  kept, no `allow-scripts`, frame reloaded with one stylesheet and one content element,
+  idempotent, guards), `src/lib/infoBox.beforeLoad.test.ts` (called before the first
+  load: one reload after it, one stylesheet, one content element, description updated
+  once; destroyed viewer before load does nothing) and
+  `src/components/CeiumGlobe.infoBox.test.tsx` (the component applies it). Live drive:
+  the InfoBox has one stylesheet and one content element, and clicking "USGS event page"
+  opens a tab whose page runs its scripts (the Angular app boots, no "Blocked script
+  execution" console message).

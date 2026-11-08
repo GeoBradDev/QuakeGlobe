@@ -10,6 +10,13 @@ type InfoBoxHost = {
     infoBox?: InfoBoxLike
 }
 
+// Frames already waiting for their first load, so a repeated call does not register twice.
+const pendingFrames = new WeakSet<HTMLIFrameElement>()
+
+function sandboxTokens(frame: HTMLIFrameElement): string[] {
+    return (frame.getAttribute("sandbox") ?? "").split(/\s+/).filter(Boolean)
+}
+
 // Cesium's InfoBox renders descriptions in an iframe sandboxed with
 // "allow-same-origin allow-popups allow-forms". A tab opened from a link in it inherits
 // that sandbox, so the USGS event page would load with its scripts blocked. Adding
@@ -21,16 +28,27 @@ type InfoBoxHost = {
 // document and subscribes to the description again; the previous subscription, which
 // writes into the old document, is disposed first. _descriptionSubscription is a private
 // InfoBox field, so it is accessed defensively.
+//
+// If the frame has not finished its first load (no content element yet), reloading now
+// could let the InfoBox load handler run twice, so the change waits for that load.
 export function allowInfoBoxPopupsToEscapeSandbox(viewer: InfoBoxHost): void {
     if (viewer.isDestroyed()) return
     const infoBox = viewer.infoBox
     if (!infoBox || infoBox.isDestroyed()) return
 
     const frame = infoBox.frame
-    const tokens = (frame.getAttribute("sandbox") ?? "").split(/\s+/).filter(Boolean)
-    if (tokens.includes(ESCAPE_TOKEN)) return
-    frame.setAttribute("sandbox", [...tokens, ESCAPE_TOKEN].join(" "))
+    if (sandboxTokens(frame).includes(ESCAPE_TOKEN) || pendingFrames.has(frame)) return
 
+    if (!frame.contentDocument?.querySelector(".cesium-infoBox-description")) {
+        pendingFrames.add(frame)
+        frame.addEventListener("load", () => {
+            pendingFrames.delete(frame)
+            allowInfoBoxPopupsToEscapeSandbox(viewer)
+        }, {once: true})
+        return
+    }
+
+    frame.setAttribute("sandbox", [...sandboxTokens(frame), ESCAPE_TOKEN].join(" "))
     const subscription = (infoBox as { _descriptionSubscription?: { dispose?: () => void } })
       ._descriptionSubscription
     subscription?.dispose?.()
