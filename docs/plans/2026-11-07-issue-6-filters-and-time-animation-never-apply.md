@@ -27,10 +27,10 @@ Domain skills:
    named constant `START_ANIMATING` (`true`, decided by the user, see Decision); either way,
    play advances time and reveals quakes in chronological order, pause stops it, and the
    clock stops at the stop time instead of running past it. On first reaching the stop
-   time the clock pauses there with the full filtered set visible; pressing Play while
-   at the stop time (including after scrubbing there) restarts from the start time and
-   keeps animating; playing from any other time is unchanged (see Decision: end of
-   playback).
+   time the clock pauses there with the full filtered set visible; pressing Play Forward
+   while at the stop time (including after scrubbing there) restarts from the start time
+   and keeps animating; Play Reverse there plays backward from the stop time; playing
+   from any other time is unchanged (see Decision: end of playback).
 3. Dragging the timeline scrubber updates which quakes are visible (a quake is visible
    only when its event time is at or before the clock's current time).
 4. Filtering works the same whether or not the clock is animating: changing a filter
@@ -114,8 +114,10 @@ Domain skills:
   (defect H): Play Reverse from beyond the stop time also clamps and raises `onStop`, and
   must keep animating backward from the stop time. The `onTick` listener then records
   `wasAtStop = currentTime >= stopTime` (at or past, so a scrub beyond the end also
-  restarts). It returns a remover for both listeners. Test:
-  `src/lib/endOfPlayback.test.ts` (real `Clock` with `ClockStep.TICK_DEPENDENT`).
+  restarts). It returns a remover for both listeners. Tests:
+  `src/lib/endOfPlayback.test.ts` (real `Clock` with `ClockStep.TICK_DEPENDENT`) and
+  `src/lib/endOfPlaybackWidget.test.ts` (real `AnimationViewModel` over a
+  `ClockViewModel`; covers Play Forward at the stop time and the defect H reverse case).
 - `src/lib/earthquakes.test.ts`: update and extend (see Proof).
 - `src/App.test.tsx` (or a new `src/components/CeiumGlobe.test.tsx` if cleaner): the
   Resium mock becomes a `forwardRef` `Viewer` exposing `{cesiumElement}` with a real
@@ -182,7 +184,8 @@ which shows the author meant playback to pause at the end. With `ClockRange.CLAM
 alone, the Animation widget's `_canAnimate` then keeps `shouldAnimate` false and Play
 Forward at the stop time does nothing until the user scrubs back. So: pause at the stop
 time on first arrival with every filtered quake visible, and restart from the start time
-when Play is pressed at the stop time.
+when Play Forward is pressed at the stop time. Play Reverse at or past the stop time plays
+backward from the stop time instead (defect H).
 
 ## Proof
 
