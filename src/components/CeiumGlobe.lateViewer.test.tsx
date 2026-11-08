@@ -1,23 +1,20 @@
 import {afterAll, afterEach, beforeEach, describe, expect, it, vi} from 'vitest'
-import {act, render, screen, waitFor} from '@testing-library/react'
+import {act, render, waitFor} from '@testing-library/react'
 import {forwardRef, useEffect, useImperativeHandle, useState, type ReactNode} from 'react'
-import {Clock, JulianDate} from 'cesium'
+import {JulianDate} from 'cesium'
+import {makeFakeViewer, shownEntities, shownEntityNames, type FakeViewer} from '../test/fakeViewer'
 
-type FakeViewer = {
-    clock: Clock
-    timeline: { zoomTo: ReturnType<typeof vi.fn> }
-    isDestroyed: () => boolean
-}
+type TestViewer = FakeViewer & { timeline: { zoomTo: ReturnType<typeof vi.fn> } }
 
 const mount = vi.hoisted(() => ({
-    viewer: undefined as unknown as FakeViewer,
+    viewer: undefined as unknown as TestViewer,
     finish: () => {},
 }))
 
 // Mirrors Resium: the Cesium viewer is created asynchronously after mount and only then
 // exposed through the imperative handle, which updates when `mounted` changes.
 vi.mock('resium', () => ({
-    Viewer: forwardRef<{ cesiumElement: FakeViewer | null }, { children?: ReactNode }>(
+    Viewer: forwardRef<{ cesiumElement: TestViewer | null }, { children?: ReactNode }>(
       function FakeViewerComponent({children}, ref) {
           const [mounted, setMounted] = useState(false)
           useEffect(() => {
@@ -27,8 +24,14 @@ vi.mock('resium', () => ({
           return <div data-testid="cesium-viewer">{children}</div>
       },
     ),
-    Entity: ({name}: { name?: string }) => <div data-testid="quake-entity">{name}</div>,
 }))
+
+// Wrap the real parser so the test can tell when the feed has arrived, since no quake
+// reaches the globe before the viewer exists.
+vi.mock('../lib/earthquakes', async (importOriginal) => {
+    const actual = await importOriginal<typeof import('../lib/earthquakes')>()
+    return {...actual, parseUsgsFeed: vi.fn(actual.parseUsgsFeed)}
+})
 
 vi.mock('cesium', async (importOriginal) => {
     const actual = await importOriginal<typeof import('cesium')>()
@@ -43,6 +46,7 @@ vi.mock('cesium', async (importOriginal) => {
 const warnSpy = vi.hoisted(() => vi.spyOn(console, 'warn').mockImplementation(() => {}))
 
 import CesiumGlobe from './CeiumGlobe'
+import {parseUsgsFeed} from '../lib/earthquakes'
 
 const T_FIRST = Date.UTC(2025, 3, 1)
 const T_LAST = Date.UTC(2025, 3, 20)
@@ -67,11 +71,7 @@ const FEED = {
 
 describe('CesiumGlobe with a viewer that mounts after the feed arrives', () => {
     beforeEach(() => {
-        mount.viewer = {
-            clock: new Clock(),
-            timeline: {zoomTo: vi.fn()},
-            isDestroyed: () => false,
-        }
+        mount.viewer = makeFakeViewer({timeline: {zoomTo: vi.fn()}}) as TestViewer
         vi.stubGlobal('fetch', vi.fn(() => Promise.resolve(new Response(JSON.stringify(FEED)))))
     })
 
@@ -85,8 +85,14 @@ describe('CesiumGlobe with a viewer that mounts after the feed arrives', () => {
 
     it('configures the clock once the viewer handle becomes available', async () => {
         render(<CesiumGlobe/>)
-        await waitFor(() => expect(screen.getAllByTestId('quake-entity')).toHaveLength(2))
+        await waitFor(() => expect(parseUsgsFeed).toHaveReturnedWith(expect.arrayContaining([
+            expect.objectContaining({id: 'first'}),
+            expect.objectContaining({id: 'last'}),
+        ])))
+        // Let the parsed feed's state update commit before the viewer appears.
+        await act(async () => {})
         const {clock, timeline} = mount.viewer
+        expect(shownEntities(mount.viewer)).toHaveLength(0)
         const start = JulianDate.fromDate(new Date(T_FIRST))
         const stop = JulianDate.fromDate(new Date(T_LAST))
         expect(JulianDate.equals(clock.startTime, start)).toBe(false)
@@ -97,5 +103,7 @@ describe('CesiumGlobe with a viewer that mounts after the feed arrives', () => {
         expect(JulianDate.equals(clock.currentTime, start)).toBe(true)
         expect(JulianDate.equals(clock.stopTime, stop)).toBe(true)
         expect(timeline.zoomTo).toHaveBeenCalledTimes(1)
+        await waitFor(() => expect(shownEntities(mount.viewer)).toHaveLength(2))
+        expect([...shownEntityNames(mount.viewer)].sort()).toEqual(['M3.2 - Alaska', 'M6.4 - Chile'])
     })
 })

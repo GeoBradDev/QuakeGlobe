@@ -1,26 +1,20 @@
 import {afterAll, afterEach, beforeEach, describe, expect, it, vi} from 'vitest'
 import {render, waitFor} from '@testing-library/react'
 import {forwardRef, useImperativeHandle, type ReactNode} from 'react'
-import {Clock, InfoBox} from 'cesium'
+import {InfoBox} from 'cesium'
+import {makeFakeViewer, type FakeViewer} from '../test/fakeViewer'
 
-type FakeViewer = {
-    clock: Clock
-    timeline: { zoomTo: () => void }
-    isDestroyed: () => boolean
-    allowDataSourcesToSuspendAnimation: boolean
-    infoBox: InfoBox
-}
+type TestViewer = FakeViewer & { infoBox: InfoBox }
 
-const holder = vi.hoisted(() => ({viewer: undefined as unknown as FakeViewer}))
+const holder = vi.hoisted(() => ({viewer: undefined as unknown as TestViewer}))
 
 vi.mock('resium', () => ({
-    Viewer: forwardRef<{ cesiumElement: FakeViewer }, { children?: ReactNode }>(
+    Viewer: forwardRef<{ cesiumElement: TestViewer }, { children?: ReactNode }>(
       function FakeViewerComponent({children}, ref) {
           useImperativeHandle(ref, () => ({cesiumElement: holder.viewer}), [])
           return <div data-testid="cesium-viewer">{children}</div>
       },
     ),
-    Entity: ({name}: { name?: string }) => <div data-testid="quake-entity">{name}</div>,
 }))
 
 vi.mock('cesium', async (importOriginal) => {
@@ -40,10 +34,7 @@ import CesiumGlobe from './CeiumGlobe'
 describe('CesiumGlobe InfoBox sandbox', () => {
     beforeEach(() => {
         holder.viewer = {
-            clock: new Clock(),
-            timeline: {zoomTo: () => {}},
-            isDestroyed: () => false,
-            allowDataSourcesToSuspendAnimation: true,
+            ...makeFakeViewer(),
             infoBox: new InfoBox(document.body.appendChild(document.createElement('div'))),
         }
         vi.stubGlobal('fetch', vi.fn(() => new Promise(() => {})))

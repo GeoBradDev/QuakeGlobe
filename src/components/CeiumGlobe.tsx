@@ -1,9 +1,8 @@
 import {Viewer as CesiumViewer} from "cesium"
-import {Viewer, Entity, CesiumComponentRef} from "resium"
+import {Viewer, CesiumComponentRef} from "resium"
 import {
-    Cartesian3,
-    Color,
     createWorldTerrainAsync,
+    type Entity,
     TerrainProvider,
     Ion,
     JulianDate,
@@ -19,43 +18,21 @@ import {
     DEFAULT_DEPTH_RANGE,
     DEFAULT_MAG_RANGE,
     getTimeRange,
-    matchesFilters,
     parseUsgsFeed,
-    quakeAvailability,
-    quakeDescription,
-    quakeName,
     type Earthquake,
 } from "../lib/earthquakes.ts"
 import {allowInfoBoxPopupsToEscapeSandbox} from "../lib/infoBox.ts"
+import {
+    addQuakeEntities,
+    applyQuakeFilters,
+    createQuakeEntities,
+    removeQuakeEntities,
+} from "../lib/quakeEntities.ts"
 
 Ion.defaultAccessToken = import.meta.env.VITE_CESIUM_ION_TOKEN
 
 if (!Ion.defaultAccessToken) {
     console.warn("Cesium Ion token is missing. Add VITE_CESIUM_ION_TOKEN to your .env file.")
-}
-
-function getColorForMagnitude(mag: number | null): Color {
-    if (mag === null) return Color.GRAY
-    if (mag >= 6) return Color.RED
-    if (mag >= 5) return Color.ORANGE
-    if (mag >= 4) return Color.YELLOW
-    return Color.LIME
-}
-
-function quakeEntityProps(q: Earthquake) {
-    return {
-        name: quakeName(q),
-        availability: quakeAvailability(q),
-        position: Cartesian3.fromDegrees(q.coordinates[0], q.coordinates[1]),
-        cylinder: {
-            length: Math.max(50000, q.coordinates[2] * 2000),
-            topRadius: 0,
-            bottomRadius: Math.exp((q.magnitude ?? 0) - 3) * 1000,
-            material: getColorForMagnitude(q.magnitude),
-            outline: false,
-        },
-        description: quakeDescription(q),
-    }
 }
 
 const USGS_URL =
@@ -86,7 +63,7 @@ export default function CesiumGlobe() {
           })
     }, [])
 
-    // A filter change makes Cesium rebuild its geometry batches asynchronously. Keep the
+    // Loading the feed makes Cesium build its geometry batches asynchronously. Keep the
     // clock running meanwhile. Resium passes the allowDataSourcesToSuspendAnimation prop
     // only to the Viewer constructor, which ignores it, so set it on the instance too.
     useEffect(() => {
@@ -119,18 +96,35 @@ export default function CesiumGlobe() {
         return attachEndOfPlayback(viewer.clock)
     }, [quakes, viewer])
 
-    // Build each quake's entity props once per feed. A surviving entity then keeps
-    // the same object references when a filter changes, so Resium does not
-    // reassign them and Cesium does not rebuild its geometry batches.
-    const entityPropsById = useMemo(
-      () => new Map(quakes.map((q) => [q.id, quakeEntityProps(q)])),
-      [quakes],
-    )
+    // One Cesium entity per quake, built once per feed and kept out of React rendering:
+    // a filter change only toggles entity.show, and Cesium applies time visibility through
+    // each entity's availability. Building them is pure, so it happens during render.
+    const quakeEntities = useMemo(() => createQuakeEntities(quakes), [quakes])
 
-    const filteredQuakes = useMemo(
-      () => quakes.filter((q) => matchesFilters(q, magRange, depthRange)),
-      [quakes, magRange, depthRange],
-    )
+    // Put the entities on the current viewer, and take them off it again when the viewer
+    // is recreated or the component unmounts (a destroyed viewer is left alone).
+    useEffect(() => {
+        if (!viewer || viewer.isDestroyed() || quakeEntities.length === 0) return
+        addQuakeEntities(viewer.entities, quakeEntities)
+        return () => {
+            if (!viewer.isDestroyed()) removeQuakeEntities(viewer.entities, quakeEntities)
+        }
+    }, [viewer, quakeEntities])
+
+    // Runs after the effect above in the same commit, so the filters in effect when the
+    // feed loads apply before Cesium draws the entities.
+    useEffect(() => {
+        if (!viewer || viewer.isDestroyed() || quakeEntities.length === 0) return
+        applyQuakeFilters(viewer.entities, quakeEntities, magRange, depthRange)
+
+        // Cesium releases the selection and camera tracking when the entity is removed, not
+        // when it is hidden, so close the InfoBox of a quake the filters just hid and stop
+        // tracking it (which also restores the camera's own frame and tilt).
+        const isHiddenQuake = (e: Entity | undefined) =>
+          e !== undefined && !e.show && quakeEntities.some(({entity}) => entity === e)
+        if (isHiddenQuake(viewer.selectedEntity)) viewer.selectedEntity = undefined
+        if (isHiddenQuake(viewer.trackedEntity)) viewer.trackedEntity = undefined
+    }, [viewer, quakeEntities, magRange, depthRange])
 
     return (
       <>
@@ -151,11 +145,7 @@ export default function CesiumGlobe() {
             allowDataSourcesToSuspendAnimation={false}
             timeline
             animation
-          >
-              {filteredQuakes.map((q) => (
-                <Entity key={q.id} {...entityPropsById.get(q.id)}/>
-              ))}
-          </Viewer>
+          />
       </>
     )
 }

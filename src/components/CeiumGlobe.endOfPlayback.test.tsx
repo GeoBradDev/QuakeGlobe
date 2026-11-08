@@ -1,14 +1,8 @@
 import {afterAll, afterEach, beforeEach, describe, expect, it, vi} from 'vitest'
-import {render, screen, waitFor} from '@testing-library/react'
+import {render, waitFor} from '@testing-library/react'
 import {forwardRef, useImperativeHandle, type ReactNode} from 'react'
-import {Clock, JulianDate} from 'cesium'
-
-type FakeViewer = {
-    clock: Clock
-    timeline: { zoomTo: () => void }
-    isDestroyed: () => boolean
-    allowDataSourcesToSuspendAnimation: boolean
-}
+import {JulianDate} from 'cesium'
+import {makeFakeViewer, shownEntities, type FakeViewer} from '../test/fakeViewer'
 
 const holder = vi.hoisted(() => ({viewer: undefined as unknown as FakeViewer}))
 
@@ -19,7 +13,6 @@ vi.mock('resium', () => ({
           return <div data-testid="cesium-viewer">{children}</div>
       },
     ),
-    Entity: ({name}: { name?: string }) => <div data-testid="quake-entity">{name}</div>,
 }))
 
 vi.mock('cesium', async (importOriginal) => {
@@ -58,12 +51,7 @@ const FEED = {
 
 describe('CesiumGlobe end of playback listeners', () => {
     beforeEach(() => {
-        holder.viewer = {
-            clock: new Clock(),
-            timeline: {zoomTo: () => {}},
-            isDestroyed: () => false,
-            allowDataSourcesToSuspendAnimation: true,
-        }
+        holder.viewer = makeFakeViewer()
         vi.stubGlobal('fetch', vi.fn(() => Promise.resolve(new Response(JSON.stringify(FEED)))))
     })
 
@@ -78,7 +66,7 @@ describe('CesiumGlobe end of playback listeners', () => {
     it('attaches the end of playback listeners with the clock and removes them on unmount', async () => {
         const {clock} = holder.viewer
         const {unmount} = render(<CesiumGlobe/>)
-        await waitFor(() => expect(screen.getAllByTestId('quake-entity')).toHaveLength(2))
+        await waitFor(() => expect(shownEntities(holder.viewer)).toHaveLength(2))
         await waitFor(() =>
           expect(JulianDate.equals(clock.startTime, JulianDate.fromDate(new Date(T_FIRST)))).toBe(true))
 
