@@ -26,7 +26,11 @@ Domain skills:
    therefore shows the earliest quake's date. Whether the clock starts animating is the
    named constant `START_ANIMATING` (`true`, decided by the user, see Decision); either way,
    play advances time and reveals quakes in chronological order, pause stops it, and the
-   clock stops at the stop time instead of running past it.
+   clock stops at the stop time instead of running past it. On first reaching the stop
+   time the clock pauses there with the full filtered set visible; pressing Play while
+   at the stop time (including after scrubbing there) restarts from the start time and
+   keeps animating; playing from any other time is unchanged (see Decision: end of
+   playback).
 3. Dragging the timeline scrubber updates which quakes are visible (a quake is visible
    only when its event time is at or before the clock's current time).
 4. Filtering works the same whether or not the clock is animating: changing a filter
@@ -90,6 +94,21 @@ Domain skills:
     effect on `[quakes, viewer]`. Resium exposes `cesiumElement` only after its async
     create (`useImperativeHandle` with deps `[mounted]`), so a feed that resolves before
     the viewer mounts, or a recreated viewer, still gets its clock configured.
+  - Added for end of playback (defect E): the clock effect calls
+    `attachEndOfPlayback(viewer.clock)` after configuring the clock and returns its
+    remover as the effect cleanup, so both listeners go on unmount or viewer change.
+    Test: `src/components/CeiumGlobe.endOfPlayback.test.tsx`.
+- `src/lib/earthquakes.ts` (added for defect E): `attachEndOfPlayback(clock): () => void`.
+  `ClockRange.CLAMPED` stays. Departure from the suggested design: `Clock.tick` in
+  `@cesium/core` raises `onStop` while the clamped time is still a local and assigns it
+  to `currentTime` afterwards, so setting `currentTime` inside `onStop` is overwritten.
+  The `onStop` listener therefore only flags the stop, and the `onTick` listener (which
+  runs after the assignment) acts on it: if the clock was already at or past the stop
+  time before this tick, set `currentTime` to a clone of `startTime` and keep animating;
+  otherwise set `shouldAnimate = false`. The `onTick` listener then records
+  `wasAtStop = currentTime >= stopTime` (at or past, so a scrub beyond the end also
+  restarts). It returns a remover for both listeners. Test:
+  `src/lib/endOfPlayback.test.ts` (real `Clock` with `ClockStep.TICK_DEPENDENT`).
 - `src/lib/earthquakes.test.ts`: update and extend (see Proof).
 - `src/App.test.tsx` (or a new `src/components/CeiumGlobe.test.tsx` if cleaner): the
   Resium mock becomes a `forwardRef` `Viewer` exposing `{cesiumElement}` with a real
@@ -144,6 +163,16 @@ Autoplay versus paused on load was a product decision taken to the user, who dec
 (2026-11-07) to autoplay from the earliest quake at 10000x, matching the original
 author's `shouldAnimate: true` config. Implemented as `START_ANIMATING = true`; tests
 assert against the constant, so a later flip needs at most a one-line test change.
+
+## Decision: end of playback
+
+Made by the orchestrator. The original code's `onTick` listener did
+`if (JulianDate.greaterThanOrEquals(c.currentTime, c.stopTime)) c.shouldAnimate = false`,
+which shows the author meant playback to pause at the end. With `ClockRange.CLAMPED`
+alone, the Animation widget's `_canAnimate` then keeps `shouldAnimate` false and Play
+Forward at the stop time does nothing until the user scrubs back. So: pause at the stop
+time on first arrival with every filtered quake visible, and restart from the start time
+when Play is pressed at the stop time.
 
 ## Proof
 

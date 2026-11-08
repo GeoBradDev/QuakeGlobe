@@ -14,6 +14,7 @@ import MagnitudeLegend from "./MagnitudeLegend.tsx"
 import InfoPanel from "./InfoPanel.tsx"
 import DepthLegend from "./DepthLegend.tsx";
 import {
+    attachEndOfPlayback,
     configureClock,
     getTimeRange,
     matchesFilters,
@@ -101,6 +102,7 @@ export default function CesiumGlobe() {
 
         configureClock(viewer.clock, range)
         viewer.timeline?.zoomTo(range.start, range.stop)
+        return attachEndOfPlayback(viewer.clock)
     }, [quakes, viewer])
 
     // Build each quake's entity props once per feed. A surviving entity then keeps

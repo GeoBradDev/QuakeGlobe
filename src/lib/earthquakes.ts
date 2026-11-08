@@ -115,3 +115,36 @@ export function configureClock(clock: Clock, range: TimeRange): void {
     clock.multiplier = CLOCK_MULTIPLIER
     clock.shouldAnimate = START_ANIMATING
 }
+
+// End of playback: the first time the clock reaches its stop time it pauses there,
+// with every quake visible. Pressing Play while at (or past) the stop time restarts
+// from the start time. Returns a function that detaches both listeners.
+//
+// Clock.tick raises onStop while it still holds the clamped time in a local and
+// assigns it to currentTime afterwards, so a currentTime set inside onStop would be
+// overwritten. onStop only flags the stop; the onTick listener acts on it.
+export function attachEndOfPlayback(clock: Clock): () => void {
+    let wasAtStop = JulianDate.greaterThanOrEquals(clock.currentTime, clock.stopTime)
+    let stopped = false
+
+    const removeStop = clock.onStop.addEventListener(() => {
+        stopped = true
+    })
+    const removeTick = clock.onTick.addEventListener(() => {
+        if (stopped) {
+            stopped = false
+            if (wasAtStop) {
+                clock.currentTime = JulianDate.clone(clock.startTime)
+                clock.shouldAnimate = true
+            } else {
+                clock.shouldAnimate = false
+            }
+        }
+        wasAtStop = JulianDate.greaterThanOrEquals(clock.currentTime, clock.stopTime)
+    })
+
+    return () => {
+        removeStop()
+        removeTick()
+    }
+}
