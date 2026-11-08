@@ -135,7 +135,7 @@ final branch side by side in one session with the same method and CPU throttles.
     with a duplicate USGS id cannot make `EntityCollection.add` throw.
   - `addQuakeEntities(collection, list)` and `removeQuakeEntities(collection, list)`, both
     inside `suspendEvents()` / `resumeEvents()`.
-  - `applyQuakeFilters(list, magRange, depthRange)`: sets `entity.show =
+  - `applyQuakeFilters(collection, list, magRange, depthRange)`: sets `entity.show =
     matchesFilters(quake, magRange, depthRange)` for each, inside one
     suspendEvents/resumeEvents pair on the collection the entities belong to (pass the
     collection in). Only assign when the value changes.
@@ -148,18 +148,23 @@ final branch side by side in one session with the same method and CPU throttles.
   - Remove the Resium `Entity` import, `getColorForMagnitude`, `quakeEntityProps`,
     `entityPropsById`, `filteredQuakes` and the `{filteredQuakes.map(...)}` children. The
     `<Viewer>` renders no children.
-  - Effect on `[viewer, quakes]`: when the viewer exists and is not destroyed and quakes is
-    non-empty, `createQuakeEntities`, `addQuakeEntities(viewer.entities, list)`, store the
-    list in state; cleanup removes them from that viewer if it is not destroyed (covers a
-    recreated viewer and unmount; StrictMode double-run must leave exactly one set).
-  - Effect on `[viewer, quakeEntities, magRange, depthRange]`: `applyQuakeFilters`; then if
+  - `quakeEntities = useMemo(() => createQuakeEntities(quakes), [quakes])` (building
+    entities is pure, so it happens during render; this replaced the planned "create in an
+    effect and store in state", which needed an extra render and a ref to the latest filter
+    ranges to apply them in the same run).
+  - Effect on `[viewer, quakeEntities]`: when the viewer exists and is not destroyed and the
+    list is non-empty, `addQuakeEntities(viewer.entities, list)`; cleanup removes them from
+    that viewer if it is not destroyed (covers a recreated viewer and unmount; StrictMode
+    double-run must leave exactly one set).
+  - Effect on `[viewer, quakeEntities, magRange, depthRange]`, declared after it so it runs
+    in the same commit: `applyQuakeFilters(viewer.entities, list, magRange, depthRange)`; then if
     `viewer.selectedEntity` is one of ours and now hidden, set `viewer.selectedEntity =
     undefined` (main cleared the selection because Cesium clears it when the selected
     entity is removed; keep that behavior). Leave trackedEntity alone (main did not clear
     it either).
   - Keep every other effect (clock, end of playback, suspend flag, InfoBox sandbox) as is.
-  - Apply filters in the same effect run that adds the entities, so a filter set before the
-    feed loads is honored on the first frame.
+  - Apply filters in the same commit as the add (the filter effect follows the add effect),
+    so a filter set before the feed loads is honored on the first frame.
 - Existing tests that mock Resium `Entity` (`CeiumGlobe.test.tsx`, `CeiumGlobe.props.test.tsx`,
   `CeiumGlobe.infoBox.test.tsx`, `CeiumGlobe.endOfPlayback.test.tsx`,
   `CeiumGlobe.lateViewer.test.tsx`, `CeiumGlobe.suspend.test.tsx`,
