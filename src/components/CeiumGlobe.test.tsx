@@ -108,7 +108,7 @@ describe('CesiumGlobe', () => {
         expect(entityNames()).toEqual(['M6.4 - Off the coast of Chile'])
     })
 
-    it('removes quakes deeper than Max Depth', async () => {
+    it('hides quakes deeper than Max Depth', async () => {
         await renderLoaded()
 
         fireEvent.change(screen.getByLabelText('Max Depth (km)'), {target: {value: '50'}})
