@@ -73,6 +73,18 @@ Domain skills:
   - The entity list is `quakes.filter((q) => matchesFilters(q, magRange, depthRange))`,
     memoized on `[quakes, magRange, depthRange]`; each `<Entity>` gets
     `availability={availabilityById.get(q.id)}`.
+  - Added after review (defect A): memoize all per-quake entity props (`name`,
+    `availability`, `position`, `cylinder`, `description`) in one `Map` keyed by id over
+    `quakes`, so an entity that survives a filter change keeps the same prop references
+    and Resium does not reassign them. Set `allowDataSourcesToSuspendAnimation={false}`
+    on `<Viewer>` (a mutable Resium Viewer prop, not read-only) so the geometry batch
+    rebuild after a filter change cannot set `clock.canAnimate = false` and stall
+    playback. Test: `src/components/CeiumGlobe.props.test.tsx`.
+  - Added after review (defect B): hold the Cesium viewer in state through a stable
+    `useCallback` ref instead of reading `viewerRef.current` once, and key the clock
+    effect on `[quakes, viewer]`. Resium exposes `cesiumElement` only after its async
+    create (`useImperativeHandle` with deps `[mounted]`), so a feed that resolves before
+    the viewer mounts, or a recreated viewer, still gets its clock configured.
 - `src/lib/earthquakes.test.ts`: update and extend (see Proof).
 - `src/App.test.tsx` (or a new `src/components/CeiumGlobe.test.tsx` if cleaner): the
   Resium mock becomes a `forwardRef` `Viewer` exposing `{cesiumElement}` with a real
@@ -104,10 +116,12 @@ Domain skills:
   resolves long after mount, and Resium creates the viewer in its own mount effect, so it
   should exist; if not, depend on a "viewer ready" signal rather than polling.
 - Resium recreating the Viewer: changing a read-only Viewer prop would rebuild the viewer
-  and lose the clock config. `terrainProvider` is a mutable Viewer prop in Resium 1.28,
-  and removing `clockViewModel` removes the only read-only prop that varied. Verify in the
-  live drive that the clock config survives terrain loading (terrain 401s locally, so this
-  is a note for the reviewer, not provable here without a token).
+  and lose the clock config. Removing `clockViewModel` removes the only read-only prop
+  that varied. `terrainProvider` is not a read-only prop, but it is not a mutable one
+  either: in Resium 1.28 it is in the Viewer's `otherProps`, and the Viewer has no update
+  hook for it, so changes after mount are ignored rather than applied. The viewer is
+  therefore never recreated and the clock config survives, but terrain resolved after
+  mount probably never reaches the viewer. That is pre-existing and out of scope here.
 - Cesium honoring `availability` for static cylinder geometry: confirmed in
   `StaticGeometryColorBatch` (`hasConstantFill` is false when availability is defined, so
   show is recomputed each frame from `isFilled(time)`). This moves ~10k entities into the

@@ -35,6 +35,22 @@ function getColorForMagnitude(mag: number): Color {
     return Color.LIME
 }
 
+function quakeEntityProps(q: Earthquake) {
+    return {
+        name: `M${q.magnitude} - ${q.place}`,
+        availability: quakeAvailability(q),
+        position: Cartesian3.fromDegrees(q.coordinates[0], q.coordinates[1]),
+        cylinder: {
+            length: Math.max(50000, q.coordinates[2] * 2000),
+            topRadius: 0,
+            bottomRadius: Math.exp(q.magnitude - 3) * 1000,
+            material: getColorForMagnitude(q.magnitude),
+            outline: false,
+        },
+        description: `<b>Magnitude:</b> ${q.magnitude}<br/><b>Depth:</b> ${q.coordinates[2]} km<br/><b>Time:</b> ${new Date(q.time).toLocaleString()}`,
+    }
+}
+
 const USGS_URL =
   "https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/all_month.geojson"
 
@@ -75,8 +91,11 @@ export default function CesiumGlobe() {
         viewer.timeline?.zoomTo(range.start, range.stop)
     }, [quakes])
 
-    const availabilityById = useMemo(
-      () => new Map(quakes.map((q) => [q.id, quakeAvailability(q)])),
+    // Build each quake's entity props once per feed. A surviving entity then keeps
+    // the same object references when a filter changes, so Resium does not
+    // reassign them and Cesium does not rebuild its geometry batches.
+    const entityPropsById = useMemo(
+      () => new Map(quakes.map((q) => [q.id, quakeEntityProps(q)])),
       [quakes],
     )
 
@@ -103,24 +122,12 @@ export default function CesiumGlobe() {
             ref={viewerRef}
             full
             terrainProvider={terrainProvider}
+            allowDataSourcesToSuspendAnimation={false}
             timeline
             animation
           >
               {filteredQuakes.map((q) => (
-                  <Entity
-                    key={q.id}
-                    availability={availabilityById.get(q.id)}
-                    name={`M${q.magnitude} - ${q.place}`}
-                    position={Cartesian3.fromDegrees(q.coordinates[0], q.coordinates[1])}
-                    cylinder={{
-                        length: Math.max(50000, q.coordinates[2] * 2000),
-                        topRadius: 0,
-                        bottomRadius: Math.exp(q.magnitude - 3) * 1000,
-                        material: getColorForMagnitude(q.magnitude),
-                        outline: false,
-                    }}
-                    description={`<b>Magnitude:</b> ${q.magnitude}<br/><b>Depth:</b> ${q.coordinates[2]} km<br/><b>Time:</b> ${new Date(q.time).toLocaleString()}`}
-                  />
+                <Entity key={q.id} {...entityPropsById.get(q.id)}/>
               ))}
           </Viewer>
       </>
