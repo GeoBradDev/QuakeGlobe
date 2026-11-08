@@ -1,14 +1,7 @@
 import {afterAll, afterEach, beforeEach, describe, expect, it, vi} from 'vitest'
 import {render, waitFor} from '@testing-library/react'
 import {forwardRef, useImperativeHandle, type ReactNode} from 'react'
-import {Clock} from 'cesium'
-
-type FakeViewer = {
-    clock: Clock
-    timeline: { zoomTo: () => void }
-    isDestroyed: () => boolean
-    allowDataSourcesToSuspendAnimation: boolean
-}
+import {makeFakeViewer, type FakeViewer} from '../test/fakeViewer'
 
 const holder = vi.hoisted(() => ({viewer: undefined as unknown as FakeViewer, destroyed: false}))
 
@@ -19,7 +12,6 @@ vi.mock('resium', () => ({
           return <div data-testid="cesium-viewer">{children}</div>
       },
     ),
-    Entity: ({name}: { name?: string }) => <div data-testid="quake-entity">{name}</div>,
 }))
 
 vi.mock('cesium', async (importOriginal) => {
@@ -39,12 +31,7 @@ import CesiumGlobe from './CeiumGlobe'
 describe('CesiumGlobe animation suspension cleanup', () => {
     beforeEach(() => {
         holder.destroyed = false
-        holder.viewer = {
-            clock: new Clock(),
-            timeline: {zoomTo: () => {}},
-            isDestroyed: () => holder.destroyed,
-            allowDataSourcesToSuspendAnimation: true,
-        }
+        holder.viewer = makeFakeViewer({isDestroyed: () => holder.destroyed})
         vi.stubGlobal('fetch', vi.fn(() => new Promise(() => {})))
     })
 

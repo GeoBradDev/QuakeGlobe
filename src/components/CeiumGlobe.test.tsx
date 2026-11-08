@@ -1,34 +1,20 @@
 import {afterAll, afterEach, beforeEach, describe, expect, it, vi} from 'vitest'
 import {fireEvent, render, screen, waitFor} from '@testing-library/react'
 import {forwardRef, useImperativeHandle, type ReactNode} from 'react'
-import {Clock, JulianDate, type TimeIntervalCollection} from 'cesium'
+import {JulianDate} from 'cesium'
+import {availabilityStartIso, makeFakeViewer, shownEntities, shownEntityNames, type FakeViewer} from '../test/fakeViewer'
 
-type FakeViewer = {
-    clock: Clock
-    timeline: { zoomTo: ReturnType<typeof vi.fn> }
-    isDestroyed: () => boolean
-}
+type TestViewer = FakeViewer & { timeline: { zoomTo: ReturnType<typeof vi.fn> } }
 
-const viewerHolder = vi.hoisted(() => ({current: undefined as unknown as FakeViewer}))
+const viewerHolder = vi.hoisted(() => ({current: undefined as unknown as TestViewer}))
 
 vi.mock('resium', () => ({
-    Viewer: forwardRef<{ cesiumElement: FakeViewer }, { children?: ReactNode }>(
+    Viewer: forwardRef<{ cesiumElement: TestViewer }, { children?: ReactNode }>(
       function FakeViewerComponent({children}, ref) {
           useImperativeHandle(ref, () => ({cesiumElement: viewerHolder.current}), [])
           return <div data-testid="cesium-viewer">{children}</div>
       },
     ),
-    Entity: ({name, availability}: { name?: string, availability?: TimeIntervalCollection }) => {
-        const start = availability?.get(0)?.start
-        return (
-          <div
-            data-testid="quake-entity"
-            data-availability-start={start ? JulianDate.toIso8601(start, 0) : ''}
-          >
-              {name}
-          </div>
-        )
-    },
 }))
 
 vi.mock('cesium', async (importOriginal) => {
@@ -75,20 +61,16 @@ function iso(ms: number): string {
 
 async function renderLoaded() {
     render(<CesiumGlobe/>)
-    await waitFor(() => expect(screen.getAllByTestId('quake-entity')).toHaveLength(3))
+    await waitFor(() => expect(shownEntities(viewerHolder.current)).toHaveLength(3))
 }
 
 function entityNames(): string[] {
-    return screen.queryAllByTestId('quake-entity').map((e) => e.textContent ?? '')
+    return shownEntityNames(viewerHolder.current)
 }
 
 describe('CesiumGlobe', () => {
     beforeEach(() => {
-        viewerHolder.current = {
-            clock: new Clock(),
-            timeline: {zoomTo: vi.fn()},
-            isDestroyed: () => false,
-        }
+        viewerHolder.current = makeFakeViewer({timeline: {zoomTo: vi.fn()}}) as TestViewer
         vi.stubGlobal('fetch', vi.fn(() => Promise.resolve(new Response(JSON.stringify(FEED)))))
     })
 
@@ -139,7 +121,7 @@ describe('CesiumGlobe', () => {
         await renderLoaded()
 
         const starts = Object.fromEntries(
-          screen.getAllByTestId('quake-entity').map((e) => [e.textContent, e.dataset.availabilityStart]),
+          shownEntities(viewerHolder.current).map((e) => [e.name, availabilityStartIso(e)]),
         )
         expect(starts).toEqual({
             'M3.2 - Alaska': iso(T_SMALL),
@@ -173,7 +155,7 @@ describe('CesiumGlobe', () => {
 
         render(<CesiumGlobe/>)
 
-        await waitFor(() => expect(screen.getAllByTestId('quake-entity')).toHaveLength(5))
+        await waitFor(() => expect(shownEntities(viewerHolder.current)).toHaveLength(5))
         expect([...entityNames()].sort()).toEqual([
             'M-1.5 - Nevada',
             'M1.2 - Hawaii',
@@ -199,7 +181,7 @@ describe('CesiumGlobe', () => {
         vi.stubGlobal('fetch', vi.fn(() => Promise.resolve(new Response(JSON.stringify(nullFeed)))))
 
         render(<CesiumGlobe/>)
-        await waitFor(() => expect(screen.getAllByTestId('quake-entity')).toHaveLength(2))
+        await waitFor(() => expect(shownEntities(viewerHolder.current)).toHaveLength(2))
 
         fireEvent.change(screen.getByLabelText('Min Magnitude'), {target: {value: '0'}})
         expect(entityNames()).toEqual(['M3.2 - Alaska'])

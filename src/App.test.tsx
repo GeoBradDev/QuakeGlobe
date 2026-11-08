@@ -4,7 +4,6 @@ import type {ReactNode} from 'react'
 
 vi.mock('resium', () => ({
     Viewer: ({children}: { children?: ReactNode }) => <div data-testid="cesium-viewer">{children}</div>,
-    Entity: ({name}: { name?: string }) => <div data-testid="quake-entity">{name}</div>,
 }))
 
 vi.mock('cesium', async (importOriginal) => {
