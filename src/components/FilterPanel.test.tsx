@@ -2,14 +2,13 @@ import {describe, expect, it, vi} from 'vitest'
 import {fireEvent, render, screen} from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import FilterPanel from './FilterPanel'
+import {DEFAULT_DEPTH_RANGE, DEFAULT_MAG_RANGE} from '../lib/earthquakes'
 
 function renderPanel() {
     const onMagChange = vi.fn()
     const onDepthChange = vi.fn()
     render(
       <FilterPanel
-        minMag={0}
-        maxMag={10}
         magRange={[2, 8]}
         onMagChange={onMagChange}
         depthRange={[0, 500]}
@@ -58,8 +57,16 @@ describe('FilterPanel', () => {
 
         await user.click(screen.getByRole('button', {name: 'Reset Filters'}))
 
-        expect(onMagChange).toHaveBeenCalledWith([0, 10])
-        expect(onDepthChange).toHaveBeenCalledWith([0, 700])
+        expect(onMagChange).toHaveBeenCalledWith(DEFAULT_MAG_RANGE)
+        expect(onDepthChange).toHaveBeenCalledWith(DEFAULT_DEPTH_RANGE)
+    })
+
+    it('lets the inputs reach the default bounds', () => {
+        renderPanel()
+
+        expect(screen.getByLabelText('Min Magnitude')).toHaveAttribute('min', String(DEFAULT_MAG_RANGE[0]))
+        expect(screen.getByLabelText('Max Magnitude')).toHaveAttribute('max', String(DEFAULT_MAG_RANGE[1]))
+        expect(screen.getByLabelText('Max Depth (km)')).toHaveAttribute('max', String(DEFAULT_DEPTH_RANGE[1]))
     })
 
     it('hides the inputs when collapsed and shows them again when expanded', async () => {
