@@ -117,8 +117,9 @@ export function configureClock(clock: Clock, range: TimeRange): void {
 }
 
 // End of playback: the first time the clock reaches its stop time it pauses there,
-// with every quake visible. Pressing Play while at (or past) the stop time restarts
-// from the start time. Returns a function that detaches both listeners.
+// with every quake visible. Pressing Play forward while at (or past) the stop time
+// restarts from the start time; playing in reverse from there moves backward from the
+// stop time. Returns a function that detaches both listeners.
 //
 // Clock.tick raises onStop while it still holds the clamped time in a local and
 // assigns it to currentTime afterwards, so a currentTime set inside onStop would be
@@ -131,13 +132,17 @@ export function attachEndOfPlayback(clock: Clock): () => void {
         stopped = true
     })
     const removeTick = clock.onTick.addEventListener(() => {
+        // Only forward play restarts or pauses. Playing in reverse from beyond the stop
+        // time also clamps and raises onStop; let that clamp stand and keep animating.
         if (stopped) {
             stopped = false
-            if (wasAtStop) {
-                clock.currentTime = JulianDate.clone(clock.startTime)
-                clock.shouldAnimate = true
-            } else {
-                clock.shouldAnimate = false
+            if (clock.multiplier > 0) {
+                if (wasAtStop) {
+                    clock.currentTime = JulianDate.clone(clock.startTime)
+                    clock.shouldAnimate = true
+                } else {
+                    clock.shouldAnimate = false
+                }
             }
         }
         wasAtStop = JulianDate.greaterThanOrEquals(clock.currentTime, clock.stopTime)

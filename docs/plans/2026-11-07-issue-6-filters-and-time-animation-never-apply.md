@@ -110,7 +110,9 @@ Domain skills:
   The `onStop` listener therefore only flags the stop, and the `onTick` listener (which
   runs after the assignment) acts on it: if the clock was already at or past the stop
   time before this tick, set `currentTime` to a clone of `startTime` and keep animating;
-  otherwise set `shouldAnimate = false`. The `onTick` listener then records
+  otherwise set `shouldAnimate = false`. Both apply only when `clock.multiplier > 0`
+  (defect H): Play Reverse from beyond the stop time also clamps and raises `onStop`, and
+  must keep animating backward from the stop time. The `onTick` listener then records
   `wasAtStop = currentTime >= stopTime` (at or past, so a scrub beyond the end also
   restarts). It returns a remover for both listeners. Test:
   `src/lib/endOfPlayback.test.ts` (real `Clock` with `ClockStep.TICK_DEPENDENT`).
@@ -187,17 +189,28 @@ when Play is pressed at the stop time.
 - Criterion 1: `earthquakes.test.ts` `matchesFilters` and `isQuakeVisible` cases for each
   bound; component test (b). Live drive: Min Magnitude 6 hides green, yellow and orange
   quakes; Max Depth 50 hides deep quakes.
-- Criterion 2: `getTimeRange` and `configureClock` unit tests; component test (a). Live
-  drive: widget starts at the earliest quake's date at 10000x; play/pause work; play advances the date
-  and quakes appear over time; the clock stops at the stop time.
+- Criterion 2: `getTimeRange` and `configureClock` unit tests; component test (a). End of
+  playback: first arrival pauses at the stop time with the full filtered set visible;
+  Play forward at (or past) the stop time restarts from the start time; Play Reverse from
+  past the stop time moves backward from the stop time; mid-range play is unchanged.
+  Tests: `src/lib/endOfPlayback.test.ts`, `src/components/CeiumGlobe.endOfPlayback.test.tsx`
+  and `src/lib/endOfPlaybackWidget.test.ts` (real `AnimationViewModel` over a
+  `ClockViewModel`). Live drive: widget starts at the earliest quake's date at 10000x;
+  play/pause work; play advances the date and quakes appear over time; the clock pauses
+  at the stop time with every filtered quake visible; a real Play Forward click there
+  restarts from the earliest quake; a real Play Reverse click after scrubbing past the
+  end moves backward from the stop time.
 - Criterion 3: `hasOccurred` and `quakeAvailability` unit tests; component test (c).
   Live drive: drag the scrubber back and forward and see the visible set change.
 - Criterion 4: component test (d). Live drive: change Min Magnitude while playing; the
   clock keeps running and the filtered set keeps revealing over time.
 - Criterion 5: the `earthquakes.test.ts` cases above.
 - Criterion 6: code review of `CeiumGlobe.tsx` (no `useState` for time, no `Clock`
-  construction, no `onTick`); live drive measures frame rate versus main, idle and while
-  playing.
+  construction). The component adds `onTick` and `onStop` listeners only through
+  `attachEndOfPlayback`, and the clock effect's cleanup removes them (covered by
+  `src/components/CeiumGlobe.endOfPlayback.test.tsx`); the suspension setting is restored
+  on cleanup (`src/components/CeiumGlobe.suspendCleanup.test.tsx`). Live drive measures
+  per-frame render cost versus main, idle and while playing.
 
 ### Frozen test rewrite (approved by the user)
 
