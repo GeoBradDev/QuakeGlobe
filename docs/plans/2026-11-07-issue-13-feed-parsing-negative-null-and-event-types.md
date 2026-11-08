@@ -22,9 +22,10 @@ Domain skills:
 
 ## Acceptance criteria
 
-1. With default filters (on load and after Reset Filters), every valid event in the feed
-   is visible: an event is valid when it has an id, a finite time, and finite longitude,
-   latitude and depth. This includes negative magnitudes, negative depths, null
+1. With default filters (on load and after Reset Filters), every valid event within the
+   default bounds (magnitude -5 to 10, depth -10 to 800 km), which today's feed is
+   entirely inside, is visible: an event is valid when it has an id, a finite time, and
+   finite longitude, latitude and depth. This includes negative magnitudes, negative depths, null
    magnitudes and every non-earthquake event type (no type is excluded). On the live
    feed, the default-filter entity count equals the parsed valid-event count.
 2. The default filter ranges are defined once (`DEFAULT_MAG_RANGE`,
@@ -155,6 +156,10 @@ the choice only matters for future data.
   `Earthquake` objects or pass `minMag` / `maxMag` are updated for the new fields and
   props, without changing what they assert.
 - `README.md`: the Metadata Popups feature line, if its text becomes wrong (Phase 8).
+- Review fix: `formatOneDecimal` in `src/lib/earthquakes.ts` is the one shared
+  one-decimal formatter for magnitude (name and popup) and depth (popup); it maps a value
+  that rounds to negative zero (for example -0.04) to `0.0`, so no `M-0.0` or
+  `-0.0 km` is shown. Tested in the new `src/lib/formatting.test.ts`.
 
 ## Order of work
 

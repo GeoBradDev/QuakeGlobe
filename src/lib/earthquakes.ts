@@ -88,8 +88,15 @@ export function escapeHtml(s: string): string {
       .replace(/'/g, "&#39;")
 }
 
+// One decimal place, with a value that rounds to negative zero (such as -0.04) shown as
+// 0.0 rather than -0.0.
+export function formatOneDecimal(n: number): string {
+    const s = n.toFixed(1)
+    return s === "-0.0" ? "0.0" : s
+}
+
 export function formatMagnitude(m: number | null): string {
-    return m === null ? "?" : m.toFixed(1)
+    return m === null ? "?" : formatOneDecimal(m)
 }
 
 export function formatEventType(t: string): string {
@@ -105,10 +112,10 @@ export function quakeName(q: Earthquake): string {
 
 // Popup HTML for the Cesium InfoBox. Every feed string is escaped.
 export function quakeDescription(q: Earthquake): string {
-    const magnitude = q.magnitude === null ? "unknown" : q.magnitude.toFixed(1)
+    const magnitude = q.magnitude === null ? "unknown" : formatOneDecimal(q.magnitude)
     const lines = [
         `<b>Magnitude:</b> ${magnitude}<br/>`,
-        `<b>Depth:</b> ${q.coordinates[2].toFixed(1)} km<br/>`,
+        `<b>Depth:</b> ${formatOneDecimal(q.coordinates[2])} km<br/>`,
         `<b>Type:</b> ${escapeHtml(formatEventType(q.type))}<br/>`,
         `<b>Place:</b> ${escapeHtml(q.place)}<br/>`,
         `<b>Time:</b> ${escapeHtml(new Date(q.time).toLocaleString())}`,
