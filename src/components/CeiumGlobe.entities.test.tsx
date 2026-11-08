@@ -246,6 +246,42 @@ describe('CesiumGlobe quake entities', () => {
         expect(viewer.selectedEntity).toBe(other)
     })
 
+    it('stops tracking a tracked quake that a filter hides', async () => {
+        const viewer = mount.viewer
+        render(<CesiumGlobe/>)
+        await waitForEntities(viewer, 3)
+        viewer.trackedEntity = entityByName(viewer, 'M3.2 - Alaska')
+
+        fireEvent.change(screen.getByLabelText('Min Magnitude'), {target: {value: '5'}})
+
+        expect(viewer.trackedEntity).toBeUndefined()
+    })
+
+    it('keeps tracking a tracked quake while a filter keeps it visible', async () => {
+        const viewer = mount.viewer
+        render(<CesiumGlobe/>)
+        await waitForEntities(viewer, 3)
+        const chile = entityByName(viewer, 'M6.4 - Off the coast of Chile')
+        viewer.trackedEntity = chile
+
+        fireEvent.change(screen.getByLabelText('Min Magnitude'), {target: {value: '5'}})
+
+        expect(shownEntities(viewer)).toHaveLength(2)
+        expect(viewer.trackedEntity).toBe(chile)
+    })
+
+    it('leaves a tracked entity that is not a quake alone', async () => {
+        const viewer = mount.viewer
+        const other = viewer.entities.add({name: 'not a quake', show: false})
+        render(<CesiumGlobe/>)
+        await waitForEntities(viewer, 4)
+        viewer.trackedEntity = other
+
+        fireEvent.change(screen.getByLabelText('Min Magnitude'), {target: {value: '5'}})
+
+        expect(viewer.trackedEntity).toBe(other)
+    })
+
     it('does not render React while the clock animates', async () => {
         const viewer = mount.viewer
         const onRender = vi.fn()

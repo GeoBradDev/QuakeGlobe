@@ -7,6 +7,7 @@ export type FakeViewer = {
     timeline: { zoomTo: (...args: unknown[]) => void }
     entities: EntityCollection
     selectedEntity: Entity | undefined
+    trackedEntity: Entity | undefined
     isDestroyed: () => boolean
     allowDataSourcesToSuspendAnimation: boolean
 }
@@ -17,6 +18,7 @@ export function makeFakeViewer(overrides: Partial<FakeViewer> = {}): FakeViewer 
         timeline: {zoomTo: () => {}},
         entities: new EntityCollection(),
         selectedEntity: undefined,
+        trackedEntity: undefined,
         isDestroyed: () => false,
         allowDataSourcesToSuspendAnimation: true,
         ...overrides,
