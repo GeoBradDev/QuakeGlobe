@@ -2,6 +2,7 @@ import {Viewer as CesiumViewer} from "cesium"
 import {Viewer, CesiumComponentRef} from "resium"
 import {
     createWorldTerrainAsync,
+    type Entity,
     TerrainProvider,
     Ion,
     JulianDate,
@@ -116,12 +117,13 @@ export default function CesiumGlobe() {
         if (!viewer || viewer.isDestroyed() || quakeEntities.length === 0) return
         applyQuakeFilters(viewer.entities, quakeEntities, magRange, depthRange)
 
-        // Cesium clears the selection when the selected entity is removed, not when it is
-        // hidden, so close the InfoBox of a quake the filters just hid.
-        const selected = viewer.selectedEntity
-        if (selected && !selected.show && quakeEntities.some(({entity}) => entity === selected)) {
-            viewer.selectedEntity = undefined
-        }
+        // Cesium releases the selection and camera tracking when the entity is removed, not
+        // when it is hidden, so close the InfoBox of a quake the filters just hid and stop
+        // tracking it (which also restores the camera's own frame and tilt).
+        const isHiddenQuake = (e: Entity | undefined) =>
+          e !== undefined && !e.show && quakeEntities.some(({entity}) => entity === e)
+        if (isHiddenQuake(viewer.selectedEntity)) viewer.selectedEntity = undefined
+        if (isHiddenQuake(viewer.trackedEntity)) viewer.trackedEntity = undefined
     }, [viewer, quakeEntities, magRange, depthRange])
 
     return (

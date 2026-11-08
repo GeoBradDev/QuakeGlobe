@@ -44,7 +44,9 @@ margin check. GPU is not throttled.
 5. Nothing regresses: magnitude and depth filters, Reset, autoplay from the earliest quake
    at 10000x, CLAMPED end-of-playback (`attachEndOfPlayback`), timeline scrubbing showing
    only quakes that have occurred, InfoBox popup on click with the #13 description and USGS
-   link escaping the sandbox, null-magnitude gray `M?`, non-earthquake type names.
+   link escaping the sandbox, null-magnitude gray `M?`, non-earthquake type names, and a
+   quake a filter hides releases both the selection (InfoBox closes) and camera tracking,
+   as removing it did on main.
 6. Symbology unchanged: cone shape (top radius 0), length `max(50000, depth * 2000)`,
    bottom radius `exp((mag ?? 0) - 3) * 1000`, colors (gray null, lime < 4, yellow 4-4.9,
    orange 5-5.9, red >= 6), computed in one place so #14 can change it there.
@@ -159,9 +161,11 @@ final branch side by side in one session with the same method and CPU throttles.
   - Effect on `[viewer, quakeEntities, magRange, depthRange]`, declared after it so it runs
     in the same commit: `applyQuakeFilters(viewer.entities, list, magRange, depthRange)`; then if
     `viewer.selectedEntity` is one of ours and now hidden, set `viewer.selectedEntity =
-    undefined` (main cleared the selection because Cesium clears it when the selected
-    entity is removed; keep that behavior). Leave trackedEntity alone (main did not clear
-    it either).
+    undefined`, and likewise `viewer.trackedEntity = undefined` for a hidden tracked quake.
+    On main both were released because CesiumWidget's `_onEntityCollectionChanged` clears
+    the selected and tracked entity when it is removed from the collection (clearing
+    tracking also resets `camera.lookAtTransform` and `enableTilt`); keep that behavior.
+    A non-quake entity, or a quake that stays visible, keeps its selection and tracking.
   - Keep every other effect (clock, end of playback, suspend flag, InfoBox sandbox) as is.
   - Apply filters in the same commit as the add (the filter effect follows the add effect),
     so a filter set before the feed loads is honored on the first frame.
@@ -181,7 +185,8 @@ final branch side by side in one session with the same method and CPU throttles.
     (spy on `collectionChanged` or compare `values` identity);
   - unmount removes the entities; a recreated viewer gets the set and the old one loses it;
   - a selected entity hidden by a filter is deselected; a selected entity that stays
-    visible stays selected;
+    visible stays selected; the same for a tracked entity (tracking released when hidden,
+    kept when visible, a non-quake entity left alone);
   - wrapping `<CesiumGlobe/>` in React `<Profiler>`, 100 `clock.tick()` calls with the
     clock animating produce zero `onRender` calls (criterion 4).
 - `README.md`: only if its text becomes wrong (Phase 8).
@@ -204,11 +209,13 @@ final branch side by side in one session with the same method and CPU throttles.
   entity sets (StrictMode double effects, viewer recreation) or entities left on a destroyed
   viewer. Covered by the lifecycle tests and the live drive (entity count equals quake
   count after load in dev mode with StrictMode).
-- Selection: Cesium clears `selectedEntity` only on removal; hiding needs the explicit
-  clear above.
-- Batch show updates: Cesium's static batch reads `entity.isShowing` and availability every
-  frame (`updateShows`), so `show` and time availability compose correctly; verify in the
-  live drive by filtering while paused mid-timeline.
+- Selection and tracking: Cesium clears `selectedEntity` and `trackedEntity` only on
+  removal; hiding needs the explicit clears above.
+- Batch show updates: every quake entity has an availability, so the static color batch
+  handles it in its `updatersWithAttributes` loop every frame, setting the per-instance
+  show attribute to `entity.isShowing && updater.isFilled(time)` (`updateShows` only serves
+  entities with constant fill). So `show` and time availability compose correctly; verify
+  in the live drive by filtering while paused mid-timeline.
 - Slices change is visible only as finer or coarser faceting; flagged for the reviewer above.
 - `allowDataSourcesToSuspendAnimation = false` stays: the initial build is still async.
 - Not done: `requestRenderMode`, Primitive or point collections, feed change.
@@ -221,6 +228,6 @@ final branch side by side in one session with the same method and CPU throttles.
 | 2 fps | triangle budget test in `quakeSymbol.test.ts` | rAF fps idle and playing, main vs branch, 1x/2x/4x; triangles drawn |
 | 3 heap | none (not unit-testable) | heap after load before GC and after GC, main vs branch |
 | 4 no React per frame | Profiler test with 100 clock ticks | React commit count over 5 s of playback |
-| 5 behaviors kept | existing tests ported, plus selection and lifecycle tests | autoplay from earliest quake at 10000x; scrub back hides later quakes; filter while paused; Reset; end of playback pause and restart; click a cone, InfoBox shows #13 description with USGS link and sandbox token; null-magnitude cone gray; dev mode (StrictMode) entity count equals quake count |
+| 5 behaviors kept | existing tests ported, plus selection and lifecycle tests | autoplay from earliest quake at 10000x; scrub back hides later quakes; filter while paused; Reset; end of playback pause and restart; click a cone, InfoBox shows #13 description with USGS link and sandbox token; a filter that hides the selected and tracked cone deselects it and releases tracking; null-magnitude cone gray; dev mode (StrictMode) entity count equals quake count |
 | 6 symbology | `quakeSymbol.test.ts` formulas | side-by-side screenshots of largest and a mid cone, main vs branch |
 | 7 feed | unchanged URL | network request is `all_month.geojson` |
